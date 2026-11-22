@@ -215,17 +215,15 @@
                         </div>
                     </div>
 
-                    <!-- Tay cầm điều khiển kiểu Game Pad góc trái dưới (hỗ trợ nhấn giữ liên tục) -->
-                    <div id="indoorDpad" class="absolute left-2.5 bottom-3 z-10 bg-slate-900/90 backdrop-blur p-2 rounded-3xl shadow-xl border border-slate-700 grid grid-cols-3 gap-1 w-[118px] select-none">
-                        <div></div>
-                        <button type="button" onpointerdown="startHoldMove(0, -1)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">▲</button>
-                        <div></div>
-                        <button type="button" onpointerdown="startHoldMove(-1, 0)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">◀</button>
-                        <button type="button" onclick="toggleUserFloor()" id="dpadFloorBtn" title="Chuyển nhanh tầng T1 / T2" class="h-9 rounded-xl bg-amber-400 text-slate-950 font-black text-[10px] active:scale-90 transition shadow">T1</button>
-                        <button type="button" onpointerdown="startHoldMove(1, 0)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">▶</button>
-                        <div></div>
-                        <button type="button" onpointerdown="startHoldMove(0, 1)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">▼</button>
-                        <div></div>
+                    <!-- Nút tròn điều khiển di chuyển nhân vật (Circular Analog Pad) -->
+                    <div id="indoorDpad" class="absolute left-3 bottom-3 z-10 w-28 h-28 rounded-full bg-slate-900/85 backdrop-blur-md shadow-2xl border-2 border-slate-600/80 flex items-center justify-center select-none touch-none">
+                        <div id="joyKnob" class="w-11 h-11 rounded-full bg-gradient-to-br from-accent to-orange-700 text-white font-black text-[10px] shadow-lg border-2 border-white/80 flex items-center justify-center transition-transform duration-75 cursor-grab active:cursor-grabbing">
+                            <span id="dpadFloorBtn" onclick="toggleUserFloor()" title="Chạm đổi tầng T1/T2">T1</span>
+                        </div>
+                        <span class="pointer-events-none absolute top-1.5 text-[9px] font-extrabold text-slate-300">▲</span>
+                        <span class="pointer-events-none absolute bottom-1.5 text-[9px] font-extrabold text-slate-300">▼</span>
+                        <span class="pointer-events-none absolute left-2 text-[9px] font-extrabold text-slate-300">◀</span>
+                        <span class="pointer-events-none absolute right-2 text-[9px] font-extrabold text-slate-300">▶</span>
                     </div>
 
                     <!-- Thẻ cảnh báo ở gần hiện vật (< 2.5m) -->
@@ -1889,7 +1887,8 @@
                 html += `<option value="art:${a.id}">📍 Hiện vật: ${a.name} (T${a.floor})</option>`;
             });
             displayCases.forEach((dc, i) => {
-                html += `<option value="case:${dc.id}">🪟 Tủ kính #${i + 1}: ${dc.label || 'Tủ kính'} (T${dc.floor})</option>`;
+                const prefix = dc.isStair ? '🪜 Cầu thang' : `🪟 Tủ kính #${i + 1}`;
+                html += `<option value="case:${dc.id}">${prefix}: ${dc.label || (dc.isStair ? 'Cầu thang' : 'Tủ kính')} (T${dc.floor})</option>`;
             });
             sel.innerHTML = html;
             if (Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
@@ -1934,7 +1933,10 @@
                 const dc = displayCases.find(c => c.id === id);
                 if (dc) { dc.position.x = x; dc.position.z = z; saveScannedMapLocal(); refreshAllUI(); }
             }
-            showToast(`📍 Đã lưu tọa độ (${x.toFixed(2)}m, ${z.toFixed(2)}m).`);
+            if (currentAppMode === 'owner' && currentOwnerSubTab === 'scan') {
+                attachLive3dToOwnerPreview();
+            }
+            showToast(`📍 Đã lưu tọa độ (${x.toFixed(2)}m, ${z.toFixed(2)}m) lên bản đồ 3D.`);
         }
 
         function nudgeSelectedObject(dx, dz) {
@@ -2008,7 +2010,8 @@
                     dc.position.z = worldZ;
                     saveScannedMapLocal();
                     refreshAllUI();
-                    showToast(`🪟 Đã đặt tủ kính tại (${worldX}m, ${worldZ}m).`);
+                    onSelectMiniMapObject(sel.value);
+                    showToast(`${dc.isStair ? '🪜 Đã đặt cầu thang' : '🪟 Đã đặt tủ kính'} tại (${worldX}m, ${worldZ}m).`);
                 }
             }
             return true;
@@ -3044,6 +3047,7 @@
             userAvatarGender = gender;
             try { localStorage.setItem('btdn_avatar_gender', gender); } catch (e) {}
             updateAvatarGenderButtonUI();
+            initCircularJoystick();
 
             const prevPos = userAvatarMesh
                 ? userAvatarMesh.position.clone()
@@ -3294,35 +3298,55 @@
 
                 if (dc.isStair) {
                     const stairW = dc.width || 1.2;
-                    const stairL = dc.depth || 2.2;
+                    const stairL = dc.depth || 2.6;
                     const stairH = dc.height || 3.5;
-                    const stepCount = 12;
-                    const stepMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 });
-                    const railMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.5 });
+                    const stepCount = 14;
+                    const riserH = stairH / stepCount;
+                    const treadD = stairL / stepCount;
+                    const stepMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.65 });
+                    const treadMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 });
+                    const postMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+                    const railMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.25, roughness: 0.45 });
 
                     for (let s = 0; s < stepCount; s++) {
-                        const frac = (s + 0.5) / stepCount;
-                        const stepH = Math.max(0.12, stairH / stepCount);
-                        const stepMesh = new THREE.Mesh(
-                            new THREE.BoxGeometry(stairW, stepH, stairL / stepCount + 0.04),
+                        const topY = (s + 1) * riserH;
+                        const zPos = -stairL / 2 + (s + 0.5) * treadD;
+
+                        // Khối bậc thang đặc liền khối tới sàn tầng dưới
+                        const riserMesh = new THREE.Mesh(
+                            new THREE.BoxGeometry(stairW, topY, treadD + 0.02),
                             stepMat
                         );
-                        stepMesh.position.set(
-                            0,
-                            frac * stairH,
-                            -stairL / 2 + frac * stairL
+                        riserMesh.position.set(0, topY / 2, zPos);
+                        group.add(riserMesh);
+
+                        // Mặt bậc trên hơi nhô để nhìn rõ từng bậc
+                        const treadMesh = new THREE.Mesh(
+                            new THREE.BoxGeometry(stairW + 0.04, 0.04, treadD + 0.05),
+                            treadMat
                         );
-                        group.add(stepMesh);
+                        treadMesh.position.set(0, topY + 0.01, zPos);
+                        group.add(treadMesh);
                     }
 
-                    // Hai thanh lan can 2 bên cầu thang
+                    // Cột trụ đầu/cuối và tay vịn song song mặt bậc
+                    const slopeAngle = Math.atan2(stairH, stairL);
+                    const railLen = Math.hypot(stairL, stairH);
                     [-stairW / 2 + 0.04, stairW / 2 - 0.04].forEach(rx => {
+                        const startPost = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.06), postMat);
+                        startPost.position.set(rx, 0.45, -stairL / 2);
+                        group.add(startPost);
+
+                        const endPost = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.06), postMat);
+                        endPost.position.set(rx, stairH + 0.45, stairL / 2);
+                        group.add(endPost);
+
                         const rail = new THREE.Mesh(
-                            new THREE.BoxGeometry(0.06, 0.06, Math.hypot(stairL, stairH)),
+                            new THREE.BoxGeometry(0.05, 0.05, railLen),
                             railMat
                         );
-                        rail.position.set(rx, stairH / 2 + 0.85, 0);
-                        rail.rotation.x = Math.atan2(stairH, stairL);
+                        rail.position.set(rx, stairH / 2 + 0.88, 0);
+                        rail.rotation.x = -slopeAngle;
                         group.add(rail);
                     });
                 } else {
@@ -3626,16 +3650,80 @@
         }
 
         let _holdMoveTimer = null;
+        let _joyActive = false;
+        let _joyVector = { dx: 0, dz: 0 };
+
         function startHoldMove(dx, dz) {
             stopHoldMove();
             moveUserStep(dx, dz);
-            _holdMoveTimer = setInterval(() => moveUserStep(dx, dz), 160);
+            _holdMoveTimer = setInterval(() => moveUserStep(dx, dz), 150);
         }
         function stopHoldMove() {
             if (_holdMoveTimer) {
                 clearInterval(_holdMoveTimer);
                 _holdMoveTimer = null;
             }
+        }
+
+        function initCircularJoystick() {
+            const pad = document.getElementById('indoorDpad');
+            const knob = document.getElementById('joyKnob');
+            if (!pad || !knob || pad.dataset.joyBound) return;
+            pad.dataset.joyBound = '1';
+
+            const maxRadius = 32;
+            const updateFromPointer = (clientX, clientY) => {
+                const rect = pad.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let vx = clientX - centerX;
+                let vy = clientY - centerY;
+                const dist = Math.hypot(vx, vy);
+                if (dist > maxRadius) {
+                    vx = (vx / dist) * maxRadius;
+                    vy = (vy / dist) * maxRadius;
+                }
+                knob.style.transform = `translate(${vx.toFixed(1)}px, ${vy.toFixed(1)}px)`;
+
+                if (dist < 8) {
+                    _joyVector = { dx: 0, dz: 0 };
+                } else {
+                    _joyVector = { dx: vx / maxRadius, dz: vy / maxRadius };
+                }
+            };
+
+            const resetKnob = () => {
+                _joyActive = false;
+                _joyVector = { dx: 0, dz: 0 };
+                knob.style.transform = 'translate(0px, 0px)';
+                stopHoldMove();
+            };
+
+            pad.addEventListener('pointerdown', (e) => {
+                if (e.target && e.target.id === 'dpadFloorBtn') {
+                    toggleUserFloor();
+                    return;
+                }
+                _joyActive = true;
+                pad.setPointerCapture(e.pointerId);
+                updateFromPointer(e.clientX, e.clientY);
+                stopHoldMove();
+                _holdMoveTimer = setInterval(() => {
+                    if (!_joyActive) return;
+                    const len = Math.hypot(_joyVector.dx, _joyVector.dz);
+                    if (len >= 0.25) {
+                        moveUserStep(_joyVector.dx, _joyVector.dz);
+                    }
+                }, 130);
+            });
+
+            pad.addEventListener('pointermove', (e) => {
+                if (!_joyActive) return;
+                updateFromPointer(e.clientX, e.clientY);
+            });
+
+            pad.addEventListener('pointerup', resetKnob);
+            pad.addEventListener('pointercancel', resetKnob);
         }
 
         function moveUserStep(dx, dz) {
@@ -4150,6 +4238,8 @@
             if (mapCanvas.parentElement !== mapWrapper) {
                 mapWrapper.insertBefore(mapCanvas, mapWrapper.firstChild);
             }
+            rebuildScannedMap3D();
+            rebuildMapPins();
             resizeMap3D();
         }
 
@@ -4258,6 +4348,9 @@
             renderVectorMiniMap();
             rebuildScannedMap3D();
             rebuildMapPins();
+            if (currentAppMode === 'owner' && currentOwnerSubTab === 'scan') {
+                resizeMap3D();
+            }
         }
 
         /* =====================================================================
