@@ -2281,11 +2281,20 @@
             showToast(`✅ Đã chuẩn hóa Tầng ${floor} theo đúng kích thước mét thực tế!`);
         }
         function cloneFloor1ToFloor2() {
-            const f1Walls = scannedWalls.filter(w => w.floor === 1);
+            let f1Walls = scannedWalls.filter(w => w.floor === 1);
+
+            // Nếu Tầng 1 chưa có tường, tự dựng khung phòng mẫu 5m x 4m ở Tầng 1 trước
             if (f1Walls.length === 0) {
-                showToast('Tầng 1 chưa có tường nào để nhân bản lên Tầng 2.');
-                return;
+                const sampleBox = [
+                    { start: { x: -2.5, y: 0, z: -2.0 }, end: { x: 2.5, y: 0, z: -2.0 }, height: 3.2, floor: 1, source: 'manual', label: 'Tường sau T1' },
+                    { start: { x: 2.5, y: 0, z: -2.0 }, end: { x: 2.5, y: 0, z: 2.0 }, height: 3.2, floor: 1, source: 'manual', label: 'Tường phải T1' },
+                    { start: { x: 2.5, y: 0, z: 2.0 }, end: { x: -2.5, y: 0, z: 2.0 }, height: 3.2, floor: 1, source: 'manual', label: 'Tường trước T1' },
+                    { start: { x: -2.5, y: 0, z: 2.0 }, end: { x: -2.5, y: 0, z: -2.0 }, height: 3.2, floor: 1, source: 'manual', label: 'Tường trái T1' }
+                ].map((w, i) => normalizeWallRecord({ ...w, id: 'wall_f1_auto_' + Date.now() + '_' + i }));
+                scannedWalls.push(...sampleBox);
+                f1Walls = sampleBox;
             }
+
             // Xóa tường Tầng 2 cũ (nếu có) để tránh trùng
             scannedWalls = scannedWalls.filter(w => w.floor !== 2);
 
@@ -2293,12 +2302,12 @@
                 ...w,
                 id: 'wall_f2_' + Date.now() + '_' + i,
                 floor: 2,
-                label: (w.label || 'Tường').replace('Tầng 1', 'Tầng 2') + ' (T2)',
+                label: (w.label || 'Tường').replace('Tầng 1', 'Tầng 2').replace('T1', 'T2') + ' (T2)',
                 updatedAt: Date.now()
             }));
             scannedWalls.push(...f2Walls);
 
-            // Đặt sẵn 1 cầu thang nối Tầng 1 -> Tầng 2 nếu chưa có
+            // Đặt sẵn 1 cầu thang nối Tầng 1 <-> Tầng 2 nếu chưa có
             const hasStair = displayCases.some(c => c.isStair);
             if (!hasStair) {
                 displayCases.push({
@@ -2306,17 +2315,21 @@
                     label: 'Cầu thang T1 ↔ T2',
                     floor: 1,
                     isStair: true,
-                    position: { x: 0, y: 0, z: 0 },
+                    position: { x: 1.5, y: 0, z: 0 },
                     width: 1.2,
                     depth: 2.2,
                     height: 3.2,
-                    angle: 0
+                    angle: 0,
+                    artifactIds: []
                 });
             }
 
-            document.getElementById('editLayoutFloorSelect').value = '2';
+            useScannedMapMode = true;
+            const floorSel = document.getElementById('editLayoutFloorSelect');
+            if (floorSel) floorSel.value = '2';
             saveScannedMapLocal();
             refreshAllUI();
+            centerMiniMap();
             showToast('🏗️ Đã dựng xong Tầng 2 chồng lên Tầng 1 và đặt Cầu thang!');
         }
 
@@ -3355,8 +3368,8 @@
                 btn.classList.toggle('bg-navy', isFirstPersonMode);
                 btn.classList.toggle('text-white', isFirstPersonMode);
             }
-            if (typeof guestAvatar !== 'undefined' && guestAvatar) {
-                guestAvatar.visible = !isFirstPersonMode;
+            if (typeof userAvatarMesh !== 'undefined' && userAvatarMesh) {
+                userAvatarMesh.visible = !isFirstPersonMode;
             }
             showToast(isFirstPersonMode ? '👁️ Đã bật Góc nhìn thứ nhất (nhìn từ mắt nhân vật).' : '🎥 Đã quay về Góc nhìn thứ 3.');
         }
@@ -3366,14 +3379,13 @@
             const delta = Math.min(0.1, (now - lastAnimTime) / 1000);
             lastAnimTime = now;
             updateUserAvatarAnimation(delta);
-            const activeAvatar = (typeof userAvatar !== 'undefined' && userAvatar)
-                ? userAvatar
-                : (typeof guestAvatar !== 'undefined' ? guestAvatar : null);
+            const activeAvatar = (typeof userAvatarMesh !== 'undefined' && userAvatarMesh) ? userAvatarMesh : null;
 
             if (controls && !isFirstPersonMode) controls.update();
             if (isFirstPersonMode && activeAvatar) {
                 const eyeHeight = 1.6;
-                const floorY = (typeof currentFloor !== 'undefined' ? (currentFloor - 1) * 3.5 : 0);
+                const activeFloor = userPos.floor || 1;
+                const floorY = (activeFloor - 1) * 3.5;
                 camera.position.set(activeAvatar.position.x, floorY + eyeHeight, activeAvatar.position.z);
                 const lookDist = 4;
                 const yaw = activeAvatar.rotation.y || 0;
@@ -3385,11 +3397,15 @@
 
                 // Tự động chuyển tầng khi bước vào vùng cầu thang
                 const stair = displayCases.find(c => c.isStair);
-                if (stair && Math.hypot(activeAvatar.position.x - stair.position.x, activeAvatar.position.z - stair.position.z) < 0.8) {
+                if (stair && Math.hypot(activeAvatar.position.x - stair.position.x, activeAvatar.position.z - stair.position.z) < 0.9) {
                     if (!window._stairCooldown) {
                         window._stairCooldown = true;
-                        if (typeof switchFloor === 'function') switchFloor(currentFloor === 1 ? 2 : 1);
-                        showToast(currentFloor === 2 ? '🪜 Đang bước lên Tầng 2...' : '🪜 Đang bước xuống Tầng 1...');
+                        const nextFloor = activeFloor === 1 ? 2 : 1;
+                        userPos.floor = nextFloor;
+                        const dpadFloorBtn = document.getElementById('dpadFloorBtn');
+                        if (dpadFloorBtn) dpadFloorBtn.textContent = 'T' + nextFloor;
+                        updateUserAvatar3D();
+                        showToast(nextFloor === 2 ? '🪜 Đang bước lên Tầng 2...' : '🪜 Đang bước xuống Tầng 1...');
                         setTimeout(() => { window._stairCooldown = false; }, 3000);
                     }
                 }
