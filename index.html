@@ -526,6 +526,100 @@
                     <div class="w-full h-52 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden relative touch-none">
                         <canvas id="vectorMiniMapCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
                     </div>
+                    <!-- CHẠM MINI-MAP ĐỂ ĐẶT VỊ TRÍ HIỆN VẬT / TỦ KÍNH -->
+                    <div class="p-2 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-navy block">📍 Chạm lên Mini-Map 2D để dời vị trí:</label>
+                        <select id="miniMapPlaceTarget" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-300 text-[11px] font-bold text-navy">
+                            <option value="pan">✋ Chế độ kéo xem bản đồ (Mặc định)</option>
+                        </select>
+                    </div>
+
+                    <!-- CHỈNH KÍCH THƯỚC TỶ LỆ THỰC 1:1 (MÉT) & DỜI / XOAY CỤM PHÒNG -->
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold text-navy">📐 Chỉnh tỷ lệ thực 1:1 (mét) &amp; Vị trí phòng</span>
+                            <select id="editLayoutFloorSelect" class="px-2 py-0.5 rounded-lg bg-white border border-slate-300 text-[10px] font-bold text-navy">
+                                <option value="1">Tầng 1</option>
+                                <option value="2">Tầng 2</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500">Rộng thật (m)</label>
+                                <input type="number" step="0.1" min="1" id="exactRoomWidthInput" placeholder="VD: 4.0" class="w-full px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500">Dài thật (m)</label>
+                                <input type="number" step="0.1" min="1" id="exactRoomDepthInput" placeholder="VD: 5.0" class="w-full px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500">Cao tường (m)</label>
+                                <input type="number" step="0.1" min="1.5" id="exactRoomHeightInput" placeholder="VD: 3.2" class="w-full px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold">
+                            </div>
+                        </div>
+                        <button type="button" onclick="applyExactRoomScale()" class="w-full py-1.5 rounded-lg bg-navy text-white text-[11px] font-extrabold active:scale-95">
+                            📏 Áp dụng đúng kích thước thật (1:1 mét)
+                        </button>
+
+                        <div class="pt-1 border-t border-slate-200">
+                            <p class="text-[9px] font-bold text-slate-500 mb-1">Dời / Xoay toàn bộ phòng (bước 0.5m):</p>
+                            <div class="grid grid-cols-5 gap-1">
+                                <button type="button" onclick="shiftFloorLayout(-0.5, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">⬅️</button>
+                                <button type="button" onclick="shiftFloorLayout(0, -0.5)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">⬆️</button>
+                                <button type="button" onclick="shiftFloorLayout(0, 0.5)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">⬇️</button>
+                                <button type="button" onclick="shiftFloorLayout(0.5, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">➡️</button>
+                                <button type="button" onclick="rotateFloorLayout(90)" class="py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-[10px] font-extrabold text-amber-900 active:scale-95">↻ 90°</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- CHẠM MINI-MAP ĐỂ ĐẶT VỊ TRÍ HIỆN VẬT / TỦ KÍNH -->
+                    <div class="p-2 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1.5">
+                        <label class="text-[10px] font-extrabold text-navy block">📍 Chạm lên Mini-Map 2D để dời vị trí:</label>
+                        <select id="miniMapPlaceTarget" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-300 text-[11px] font-bold text-navy">
+                            <option value="pan">✋ Chế độ kéo xem bản đồ (Mặc định)</option>
+                        </select>
+                    </div>
+
+                    <!-- CHỈNH KÍCH THƯỚC TỶ LỆ THỰC 1:1 (MÉT) & DỜI / XOAY CỤM PHÒNG -->
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold text-navy">📐 Chỉnh tỷ lệ thực 1:1 (mét) &amp; Vị trí phòng</span>
+                            <select id="editLayoutFloorSelect" class="px-2 py-0.5 rounded-lg bg-white border border-slate-300 text-[10px] font-bold text-navy">
+                                <option value="1">Tầng 1</option>
+                                <option value="2">Tầng 2</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500">Rộng thật (m)</label>
+                                <input type="number" step="0.1" min="1" id="exactRoomWidthInput" placeholder="VD: 4.0" class="w-full px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500">Dài thật (m)</label>
+                                <input type="number" step="0.1" min="1" id="exactRoomDepthInput" placeholder="VD: 5.0" class="w-full px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold">
+                            </div>
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-500">Cao tường (m)</label>
+                                <input type="number" step="0.1" min="1.5" id="exactRoomHeightInput" placeholder="VD: 3.2" class="w-full px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold">
+                            </div>
+                        </div>
+                        <button type="button" onclick="applyExactRoomScale()" class="w-full py-1.5 rounded-lg bg-navy text-white text-[11px] font-extrabold active:scale-95">
+                            📏 Áp dụng đúng kích thước thật (1:1 mét)
+                        </button>
+
+                        <div class="pt-1 border-t border-slate-200">
+                            <p class="text-[9px] font-bold text-slate-500 mb-1">Dời / Xoay toàn bộ phòng (bước 0.5m):</p>
+                            <div class="grid grid-cols-5 gap-1">
+                                <button type="button" onclick="shiftFloorLayout(-0.5, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">⬅️</button>
+                                <button type="button" onclick="shiftFloorLayout(0, -0.5)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">⬆️</button>
+                                <button type="button" onclick="shiftFloorLayout(0, 0.5)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">⬇️</button>
+                                <button type="button" onclick="shiftFloorLayout(0.5, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[10px] font-extrabold text-navy active:scale-95">➡️</button>
+                                <button type="button" onclick="rotateFloorLayout(90)" class="py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-[10px] font-extrabold text-amber-900 active:scale-95">↻ 90°</button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="flex flex-wrap gap-2 text-[9px] font-bold text-slate-500">
                         <span class="flex items-center gap-1"><span class="w-3 h-1 bg-teal-700 inline-block"></span> Tường AR</span>
                         <span class="flex items-center gap-1"><span class="w-3 h-1 bg-blue-600 inline-block"></span> Tường thủ công</span>
@@ -1712,6 +1806,7 @@
         }
 
         function renderScannedWallsList() {
+            populateMiniMapPlacementSelect();
             const box = document.getElementById('scannedWallsList');
             if (!box) return;
             if (scannedWalls.length === 0) {
@@ -1719,12 +1814,23 @@
                 return;
             }
             box.innerHTML = scannedWalls.map((w, idx) => `
-                <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
-                    <div class="min-w-0">
-                        <p class="font-bold text-navy truncate">#${idx + 1} ${w.label || 'Đoạn tường'} (${w.source})</p>
-                        <p class="text-[10px] text-slate-500">Dài ${w.length.toFixed(2)}m • Cao ${w.height.toFixed(1)}m • Tầng ${w.floor}</p>
+                <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <p class="font-bold text-navy truncate">#${idx + 1} ${w.label || 'Đoạn tường'}</p>
+                            <p class="text-[10px] text-slate-500">Dài ${w.length.toFixed(2)}m • Cao ${w.height.toFixed(1)}m • Tầng ${w.floor}</p>
+                        </div>
+                        <div class="flex gap-1 shrink-0">
+                            <button type="button" onclick="toggleWallEditRow('${w.id}')" class="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 font-bold text-[10px]">Sửa</button>
+                            <button type="button" onclick="deleteScannedWall('${w.id}')" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px]">Xóa</button>
+                        </div>
                     </div>
-                    <button type="button" onclick="deleteScannedWall('${w.id}')" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px] shrink-0">Xóa</button>
+                    <div id="editWallRow-${w.id}" class="hidden pt-1.5 border-t border-slate-200 flex items-center gap-1.5">
+                        <input type="number" step="0.1" min="0.3" id="editWallLen-${w.id}" value="${w.length.toFixed(2)}" class="w-20 px-2 py-1 rounded-lg bg-white border border-slate-300 text-[10px] font-bold" placeholder="Dài (m)">
+                        <span class="text-[10px] text-slate-400">×</span>
+                        <input type="number" step="0.1" min="1.0" id="editWallH-${w.id}" value="${w.height.toFixed(1)}" class="w-20 px-2 py-1 rounded-lg bg-white border border-slate-300 text-[10px] font-bold" placeholder="Cao (m)">
+                        <button type="button" onclick="saveWallEdit('${w.id}')" class="flex-1 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[10px]">Lưu</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -1754,12 +1860,214 @@
             renderVectorMiniMap();
         }
 
+        function populateMiniMapPlacementSelect() {
+            const sel = document.getElementById('miniMapPlaceTarget');
+            if (!sel) return;
+            const prev = sel.value || 'pan';
+            let html = '<option value="pan">✋ Chế độ kéo xem bản đồ (Mặc định)</option>';
+            artifacts.forEach(a => {
+                html += `<option value="art:${a.id}">📍 Hiện vật: ${a.name} (T${a.floor})</option>`;
+            });
+            displayCases.forEach((dc, i) => {
+                html += `<option value="case:${dc.id}">🪟 Tủ kính #${i + 1}: ${dc.label || 'Tủ kính'} (T${dc.floor})</option>`;
+            });
+            sel.innerHTML = html;
+            if (Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+        }
+
+        function placeSelectedObjectAtCanvasPoint(clientX, clientY) {
+            const sel = document.getElementById('miniMapPlaceTarget');
+            const canvas = document.getElementById('vectorMiniMapCanvas');
+            if (!sel || !canvas || sel.value === 'pan') return false;
+
+            const rect = canvas.getBoundingClientRect();
+            const mx = (clientX - rect.left) * (canvas.width / rect.width);
+            const my = (clientY - rect.top) * (canvas.height / rect.height);
+
+            const scale = miniMapView.scale;
+            const cx = canvas.width / 2 - ownerPos.x * scale + miniMapView.offsetX;
+            const cy = canvas.height / 2 - ownerPos.z * scale + miniMapView.offsetY;
+
+            const worldX = Math.round(((mx - cx) / scale) * 20) / 20;
+            const worldZ = Math.round(((my - cy) / scale) * 20) / 20;
+
+            const [kind, id] = sel.value.split(':');
+            if (kind === 'art') {
+                const art = artifacts.find(a => a.id === id);
+                if (art) {
+                    art.x = worldX;
+                    art.z = worldZ;
+                    saveArtifactsLocal();
+                    refreshAllUI();
+                    showToast(`📍 Đã đặt "${art.name}" tại (${worldX}m, ${worldZ}m).`);
+                }
+            } else if (kind === 'case') {
+                const dc = displayCases.find(c => c.id === id);
+                if (dc) {
+                    dc.position.x = worldX;
+                    dc.position.z = worldZ;
+                    saveScannedMapLocal();
+                    refreshAllUI();
+                    showToast(`🪟 Đã đặt tủ kính tại (${worldX}m, ${worldZ}m).`);
+                }
+            }
+            return true;
+        }
+
+        function toggleWallEditRow(id) {
+            const row = document.getElementById('editWallRow-' + id);
+            if (row) row.classList.toggle('hidden');
+        }
+
+        function saveWallEdit(id) {
+            const idx = scannedWalls.findIndex(w => w.id === id);
+            if (idx === -1) return;
+            const newLen = parseFloat(document.getElementById('editWallLen-' + id)?.value);
+            const newH = parseFloat(document.getElementById('editWallH-' + id)?.value);
+            if (!Number.isFinite(newLen) || newLen < 0.3 || !Number.isFinite(newH) || newH < 1.0) {
+                showToast('Kích thước tường không hợp lệ.');
+                return;
+            }
+            const w = scannedWalls[idx];
+            const midX = (w.start.x + w.end.x) / 2;
+            const midZ = (w.start.z + w.end.z) / 2;
+            const half = newLen / 2;
+            scannedWalls[idx] = normalizeWallRecord({
+                ...w,
+                start: { x: midX - w.direction.x * half, y: w.start.y, z: midZ - w.direction.z * half },
+                end: { x: midX + w.direction.x * half, y: w.end.y, z: midZ + w.direction.z * half },
+                height: newH,
+                updatedAt: Date.now()
+            });
+            saveScannedMapLocal();
+            refreshAllUI();
+            showToast(`Đã cập nhật tường: Dài ${newLen.toFixed(2)}m × Cao ${newH.toFixed(1)}m.`);
+        }
+
+        function applyExactRoomScale() {
+            const floor = Number(document.getElementById('editLayoutFloorSelect')?.value) || 1;
+            const targetW = parseFloat(document.getElementById('exactRoomWidthInput')?.value);
+            const targetD = parseFloat(document.getElementById('exactRoomDepthInput')?.value);
+            const targetH = parseFloat(document.getElementById('exactRoomHeightInput')?.value);
+
+            const floorWalls = scannedWalls.filter(w => w.floor === floor);
+            if (floorWalls.length === 0) {
+                showToast(`Tầng ${floor} chưa có tường nào để chỉnh kích thước.`);
+                return;
+            }
+
+            let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+            floorWalls.forEach(w => {
+                minX = Math.min(minX, w.start.x, w.end.x);
+                maxX = Math.max(maxX, w.start.x, w.end.x);
+                minZ = Math.min(minZ, w.start.z, w.end.z);
+                maxZ = Math.max(maxZ, w.start.z, w.end.z);
+            });
+
+            const curW = Math.max(0.1, maxX - minX);
+            const curD = Math.max(0.1, maxZ - minZ);
+            const cx = (minX + maxX) / 2;
+            const cz = (minZ + maxZ) / 2;
+
+            const scaleX = (Number.isFinite(targetW) && targetW >= 1) ? (targetW / curW) : 1;
+            const scaleZ = (Number.isFinite(targetD) && targetD >= 1) ? (targetD / curD) : 1;
+
+            scannedWalls = scannedWalls.map(w => {
+                if (w.floor !== floor) return w;
+                return normalizeWallRecord({
+                    ...w,
+                    start: { x: cx + (w.start.x - cx) * scaleX, y: w.start.y, z: cz + (w.start.z - cz) * scaleZ },
+                    end: { x: cx + (w.end.x - cx) * scaleX, y: w.end.y, z: cz + (w.end.z - cz) * scaleZ },
+                    height: (Number.isFinite(targetH) && targetH >= 1.5) ? targetH : w.height,
+                    updatedAt: Date.now()
+                });
+            });
+
+            displayCases.forEach(dc => {
+                if (dc.floor !== floor) return;
+                dc.position.x = cx + (dc.position.x - cx) * scaleX;
+                dc.position.z = cz + (dc.position.z - cz) * scaleZ;
+            });
+
+            saveScannedMapLocal();
+            refreshAllUI();
+            centerMiniMap();
+            showToast(`✅ Đã chuẩn hóa Tầng ${floor} theo đúng kích thước mét thực tế!`);
+        }
+
+        function shiftFloorLayout(dx, dz) {
+            const floor = Number(document.getElementById('editLayoutFloorSelect')?.value) || 1;
+            scannedWalls = scannedWalls.map(w => {
+                if (w.floor !== floor) return w;
+                return normalizeWallRecord({
+                    ...w,
+                    start: { x: w.start.x + dx, y: w.start.y, z: w.start.z + dz },
+                    end: { x: w.end.x + dx, y: w.end.y, z: w.end.z + dz }
+                });
+            });
+            displayCases.forEach(dc => {
+                if (dc.floor === floor) {
+                    dc.position.x += dx;
+                    dc.position.z += dz;
+                }
+            });
+            saveScannedMapLocal();
+            refreshAllUI();
+        }
+
+        function rotateFloorLayout(deg) {
+            const floor = Number(document.getElementById('editLayoutFloorSelect')?.value) || 1;
+            const floorWalls = scannedWalls.filter(w => w.floor === floor);
+            if (floorWalls.length === 0) return;
+
+            let sumX = 0, sumZ = 0;
+            floorWalls.forEach(w => {
+                sumX += (w.start.x + w.end.x) / 2;
+                sumZ += (w.start.z + w.end.z) / 2;
+            });
+            const cx = sumX / floorWalls.length;
+            const cz = sumZ / floorWalls.length;
+            const rad = (deg * Math.PI) / 180;
+            const cos = Math.cos(rad), sin = Math.sin(rad);
+            const rotPt = (x, z) => ({
+                x: cx + (x - cx) * cos - (z - cz) * sin,
+                z: cz + (x - cx) * sin + (z - cz) * cos
+            });
+
+            scannedWalls = scannedWalls.map(w => {
+                if (w.floor !== floor) return w;
+                const s = rotPt(w.start.x, w.start.z);
+                const e = rotPt(w.end.x, w.end.z);
+                return normalizeWallRecord({
+                    ...w,
+                    start: { x: s.x, y: w.start.y, z: s.z },
+                    end: { x: e.x, y: w.end.y, z: e.z }
+                });
+            });
+            displayCases.forEach(dc => {
+                if (dc.floor === floor) {
+                    const p = rotPt(dc.position.x, dc.position.z);
+                    dc.position.x = p.x;
+                    dc.position.z = p.z;
+                    dc.angle = (dc.angle || 0) + rad;
+                }
+            });
+            saveScannedMapLocal();
+            refreshAllUI();
+            showToast(`↻ Đã xoay cụm phòng Tầng ${floor} thêm ${deg}°.`);
+        }
+
         function initMiniMapPanEvents() {
             const canvas = document.getElementById('vectorMiniMapCanvas');
             if (!canvas || canvas.dataset.panBound) return;
             canvas.dataset.panBound = '1';
 
-            const startDrag = (x, y) => { miniMapView.dragging = true; miniMapView.lastX = x; miniMapView.lastY = y; };
+            const startDrag = (x, y) => {
+                if (placeSelectedObjectAtCanvasPoint(x, y)) return;
+                miniMapView.dragging = true;
+                miniMapView.lastX = x;
+                miniMapView.lastY = y;
+            };
             const moveDrag = (x, y) => {
                 if (!miniMapView.dragging) return;
                 miniMapView.offsetX += (x - miniMapView.lastX);
