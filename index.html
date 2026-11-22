@@ -1582,22 +1582,42 @@
         }
 
         function handleDeviceMotion(e) {
-            if (!isRecordingWalk || currentAppMode !== 'owner' || xrSession) return;
             const acc = e.accelerationIncludingGravity;
             if (!acc) return;
             const mag = Math.hypot(acc.x || 0, acc.y || 0, acc.z || 0);
             gravityBase = 0.9 * gravityBase + 0.1 * mag;
             const linear = Math.abs(mag - gravityBase);
-
-            const meter = document.getElementById('pedometerMeterBar');
-            const valEl = document.getElementById('pedometerAccelVal');
-            if (meter) meter.style.width = Math.min(100, (linear / 2.5) * 100) + '%';
-            if (valEl) valEl.textContent = linear.toFixed(2) + ' m/s²';
-
             const now = Date.now();
-            if (linear > stepThreshold && now - lastStepTime > 320) {
-                lastStepTime = now;
-                ownerStepForward();
+
+            // 1. Chế độ Chủ sở hữu (ghi lối đi trên Mini-Map 2D)
+            if (isRecordingWalk && currentAppMode === 'owner' && !xrSession) {
+                const meter = document.getElementById('pedometerMeterBar');
+                const valEl = document.getElementById('pedometerAccelVal');
+                if (meter) meter.style.width = Math.min(100, (linear / 2.5) * 100) + '%';
+                if (valEl) valEl.textContent = linear.toFixed(2) + ' m/s²';
+
+                if (linear > stepThreshold && now - lastStepTime > 320) {
+                    lastStepTime = now;
+                    ownerStepForward();
+                }
+                return;
+            }
+
+            // 2. Chế độ Khách (cầm điện thoại đi trong nhà -> nhân vật 3D tự bước theo hướng la bàn)
+            if (currentAppMode === 'visitor' && trackingMode === 'indoor' && compassEnabled) {
+                if (linear > 0.6 && now - lastStepTime > 380) {
+                    lastStepTime = now;
+                    const rad = ((userPos.heading || 0) * Math.PI) / 180;
+                    const step = 0.65;
+                    const nx = userPos.x + Math.sin(rad) * step;
+                    const nz = userPos.z - Math.cos(rad) * step;
+                    if (typeof isBlockedByObstacle === 'function' && isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
+                        return;
+                    }
+                    userPos.x = nx;
+                    userPos.z = nz;
+                    updateUserAvatar3D();
+                }
             }
         }
 
@@ -2806,6 +2826,9 @@
             document.getElementById('proximityCard').classList.add('hidden');
         }
 
+        let gpsWatchId = null;
+        let gpsOrigin = null;
+
         function setNavTrackingMode(mode) {
             trackingMode = mode;
             document.getElementById('trackBtn-gps').className = mode === 'gps'
@@ -2814,12 +2837,56 @@
             document.getElementById('trackBtn-indoor').className = mode === 'indoor'
                 ? 'flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm transition'
                 : 'flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition';
-            showToast(mode === 'gps' ? 'Đã bật chế độ GPS Thực tế.' : 'Đã chuyển sang chế độ Trong nhà (D-pad).');
+
+            if (gpsWatchId !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                gpsWatchId = null;
+            }
+
+            if (mode === 'gps') {
+                if (!navigator.geolocation) {
+                    showToast('Thiết bị không hỗ trợ GPS.');
+                    return;
+                }
+                gpsOrigin = null;
+                showToast('🛰️ Đang lấy vị trí GPS Thực tế...');
+                gpsWatchId = navigator.geolocation.watchPosition((pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    if (!gpsOrigin) {
+                        gpsOrigin = { lat: latitude, lng: longitude, baseX: userPos.x, baseZ: userPos.z };
+                        showToast('✅ Đã khóa điểm gốc GPS! Bạn có thể di chuyển.');
+                        return;
+                    }
+                    const mLat = 111320;
+                    const mLng = 111320 * Math.cos((gpsOrigin.lat * Math.PI) / 180);
+                    const nx = gpsOrigin.baseX + (longitude - gpsOrigin.lng) * mLng;
+                    const nz = gpsOrigin.baseZ - (latitude - gpsOrigin.lat) * mLat;
+                    if (typeof isBlockedByObstacle === 'function' && isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
+                        return;
+                    }
+                    userPos.x = nx;
+                    userPos.z = nz;
+                    updateUserAvatar3D();
+                }, (err) => {
+                    showToast('Lỗi GPS: ' + err.message);
+                }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+            } else {
+                showToast('🚶 Trong nhà: Bật nút La bàn để tự bước theo chân, hoặc bấm phím mũi tên.');
+            }
         }
 
         function toggleCompass() {
             compassEnabled = !compassEnabled;
-            showToast(compassEnabled ? 'Đã bật La bàn số.' : 'Đã tắt La bàn số.');
+            const btn = document.getElementById('compassBtn');
+            if (btn) {
+                btn.className = compassEnabled
+                    ? 'py-1.5 px-2.5 rounded-xl text-[11px] font-bold bg-emerald-600 text-white border border-emerald-700 transition'
+                    : 'py-1.5 px-2.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 transition';
+            }
+            if (compassEnabled && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().catch(() => {});
+            }
+            showToast(compassEnabled ? '🧭 Đã bật La bàn & Bước chân! Cầm máy đi để nhân vật bước theo.' : 'Đã tắt La bàn số.');
         }
 
         /* =====================================================================
@@ -3445,9 +3512,17 @@
             window.addEventListener('devicemotion', handleDeviceMotion);
             window.addEventListener('deviceorientation', (e) => {
                 if (typeof e.alpha === 'number') {
-                    ownerPos.heading = (360 - e.alpha) % 360;
+                    const heading = (360 - e.alpha) % 360;
+                    ownerPos.heading = heading;
                     const el = document.getElementById('ownerHeadingVal');
-                    if (el) el.textContent = Math.round(ownerPos.heading) + '°';
+                    if (el) el.textContent = Math.round(heading) + '°';
+
+                    if (compassEnabled && currentAppMode === 'visitor') {
+                        userPos.heading = heading;
+                        if (userAvatarMesh) {
+                            userAvatarMesh.rotation.y = (-heading * Math.PI) / 180;
+                        }
+                    }
                 }
             });
 
