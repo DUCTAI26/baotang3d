@@ -2560,19 +2560,74 @@
         function rebuildMapPins() {
             if (!pinsGroup) return;
             pinsGroup.clear();
+
+            const pedMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+            const trimMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.3 });
+            const texLoader = new THREE.TextureLoader();
+
             artifacts.forEach(art => {
                 if (currentFloorView !== 'all' && String(art.floor) !== currentFloorView) return;
                 const yBase = (art.floor - 1) * 3.5;
-                const pin = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.28, 16, 16),
-                    new THREE.MeshStandardMaterial({ color: 0xea580c })
-                );
-                pin.position.set(art.x || 0, yBase + 0.9, art.z || 0);
-                pin.userData.artifactId = art.id;
-                pinsGroup.add(pin);
+                const group = new THREE.Group();
+
+                // 1. Bệ trưng bày đặt sát sàn
+                const pedestal = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.75, 0.6), pedMat);
+                pedestal.position.y = 0.375;
+                const trim = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.05, 0.66), trimMat);
+                trim.position.y = 0.775;
+                group.add(pedestal, trim);
+
+                // 2. Hiện vật 3D đặt trên bệ
+                if (art.imageDataUrl) {
+                    const frame = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.62, 0.62, 0.06),
+                        new THREE.MeshStandardMaterial({ color: 0x0f294a })
+                    );
+                    frame.position.y = 1.15;
+                    const tex = texLoader.load(art.imageDataUrl);
+                    const photoPlane = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.54, 0.54),
+                        new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+                    );
+                    photoPlane.position.set(0, 1.15, 0.035);
+                    group.add(frame, photoPlane);
+                } else {
+                    const nameLower = (art.name || '').toLowerCase();
+                    let objMesh;
+                    if (nameLower.includes('trống')) {
+                        objMesh = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.26, 0.22, 0.36, 20),
+                            new THREE.MeshStandardMaterial({ color: 0xb45309, metalness: 0.5, roughness: 0.35 })
+                        );
+                        objMesh.position.y = 0.98;
+                    } else if (nameLower.includes('bình') || nameLower.includes('gốm')) {
+                        objMesh = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.12, 0.2, 0.45, 16),
+                            new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.6 })
+                        );
+                        objMesh.position.y = 1.02;
+                    } else if (nameLower.includes('súng')) {
+                        objMesh = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.08, 0.11, 0.7, 14),
+                            new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 })
+                        );
+                        objMesh.rotation.z = Math.PI / 2.2;
+                        objMesh.position.y = 0.96;
+                    } else {
+                        objMesh = new THREE.Mesh(
+                            new THREE.DodecahedronGeometry(0.24, 0),
+                            new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.35, metalness: 0.25 })
+                        );
+                        objMesh.position.y = 1.05;
+                    }
+                    group.add(objMesh);
+                }
+
+                group.position.set(art.x || 0, yBase, art.z || 0);
+                group.userData.artifactId = art.id;
+                pinsGroup.add(group);
             });
         }
-
         function zoomMap3D(delta) {
             if (!camera || !controls) return;
             const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
@@ -2616,9 +2671,57 @@
         /* =====================================================================
          * 11. DẪN ĐƯỜNG, DI CHUYỂN & TỰ ĐỘNG THUYẾT MINH (< 2.5m)
          * ===================================================================== */
+        function pointToSegmentDist(px, pz, x1, z1, x2, z2) {
+            const dx = x2 - x1, dz = z2 - z1;
+            const lenSq = dx * dx + dz * dz;
+            if (lenSq === 0) return Math.hypot(px - x1, pz - z1);
+            let t = ((px - x1) * dx + (pz - z1) * dz) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * dx), pz - (z1 + t * dz));
+        }
+
+        function segmentsIntersect(ax, az, bx, bz, cx, cz, dx, dz) {
+            const ccw = (p1x, p1z, p2x, p2z, p3x, p3z) =>
+                (p3z - p1z) * (p2x - p1x) > (p2z - p1z) * (p3x - p1x);
+            return (ccw(ax, az, cx, cz, dx, dz) !== ccw(bx, bz, cx, cz, dx, dz)) &&
+                   (ccw(ax, az, bx, bz, cx, cz) !== ccw(ax, az, bx, bz, dx, dz));
+        }
+
+        function isBlockedByObstacle(oldX, oldZ, newX, newZ, floor) {
+            if (!useScannedMapMode) return false;
+            const avatarRadius = 0.38;
+
+            // Kiểm tra va chạm tường cùng tầng
+            for (const w of scannedWalls) {
+                if (w.floor !== floor) continue;
+                const d = pointToSegmentDist(newX, newZ, w.start.x, w.start.z, w.end.x, w.end.z);
+                if (d < avatarRadius || segmentsIntersect(oldX, oldZ, newX, newZ, w.start.x, w.start.z, w.end.x, w.end.z)) {
+                    return true;
+                }
+            }
+
+            // Kiểm tra va chạm tủ kính cùng tầng
+            for (const dc of displayCases) {
+                if (dc.floor !== floor) continue;
+                const halfW = (dc.width || 1.0) / 2 + 0.25;
+                const halfD = (dc.depth || 0.8) / 2 + 0.25;
+                if (Math.abs(newX - dc.position.x) < halfW && Math.abs(newZ - dc.position.z) < halfD) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         function moveUserStep(dx, dz) {
-            userPos.x += dx * 0.8;
-            userPos.z += dz * 0.8;
+            const step = 0.6;
+            const nx = userPos.x + dx * step;
+            const nz = userPos.z + dz * step;
+            if (isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
+                showToast('🚧 Đụng tường hoặc tủ kính rồi!');
+                return;
+            }
+            userPos.x = nx;
+            userPos.z = nz;
             updateUserAvatar3D();
         }
 
