@@ -1782,11 +1782,11 @@
             rebuildScannedMap3D();
             showToast('Đã xóa toàn bộ tường & lối đi đã quét.');
         }
-        if (typeof syncQuickWallEditorUI === 'function') syncQuickWallEditorUI();
 
         function renderScannedWallsList() {
             populateMiniMapPlacementSelect();
             const box = document.getElementById('scannedWallsList');
+            if (typeof syncQuickWallEditorUI === 'function') syncQuickWallEditorUI();
             if (!box) return;
             if (scannedWalls.length === 0) {
                 box.innerHTML = '<p class="text-[11px] text-slate-400 text-center py-2">Chưa có đoạn tường nào được lưu.</p>';
