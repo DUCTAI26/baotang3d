@@ -524,8 +524,17 @@
                             <button type="button" onclick="centerMiniMap()" class="px-2 h-7 rounded-lg bg-navy text-white font-bold text-[10px] active:scale-95">Căn giữa</button>
                         </div>
                     </div>
-                    <div class="w-full h-52 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden relative touch-none">
-                        <canvas id="vectorMiniMapCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <div class="space-y-1">
+                            <p class="text-[9px] font-extrabold text-slate-500 text-center">Mặt bằng 2D</p>
+                            <div class="w-full h-52 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden relative touch-none">
+                                <canvas id="vectorMiniMapCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <p class="text-[9px] font-extrabold text-indigo-700 text-center">Xem trước 3D trực tiếp</p>
+                            <div id="ownerLive3dPreviewBox" class="w-full h-52 rounded-xl bg-slate-200 border border-indigo-200 overflow-hidden relative touch-none"></div>
+                        </div>
                     </div>
                     <!-- CHỈNH NHANH TƯỜNG ĐANG CHỌN (NHÌN TRỰC TIẾP TRÊN MINI-MAP) -->
                     <div class="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 space-y-2">
@@ -3184,6 +3193,36 @@
 
             scannedMapGroup.add(new THREE.GridHelper(24, 24, 0x94a3b8, 0xe2e8f0));
 
+            // Dựng sàn tự động cho từng tầng có tường (bao gồm sàn Tầng 2 ở độ cao y = 3.5m)
+            const floorsWithWalls = Array.from(new Set(scannedWalls.map(w => w.floor || 1)));
+            floorsWithWalls.forEach(fl => {
+                const fw = scannedWalls.filter(w => (w.floor || 1) === fl);
+                if (fw.length === 0) return;
+                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+                fw.forEach(w => {
+                    minX = Math.min(minX, w.start.x, w.end.x);
+                    maxX = Math.max(maxX, w.start.x, w.end.x);
+                    minZ = Math.min(minZ, w.start.z, w.end.z);
+                    maxZ = Math.max(maxZ, w.start.z, w.end.z);
+                });
+                const pad = 0.4;
+                const slabW = Math.max(1.5, (maxX - minX) + pad * 2);
+                const slabD = Math.max(1.5, (maxZ - minZ) + pad * 2);
+                const slabCx = (minX + maxX) / 2;
+                const slabCz = (minZ + maxZ) / 2;
+                const yBase = (fl - 1) * 3.5;
+
+                const slab = new THREE.Mesh(
+                    new THREE.BoxGeometry(slabW, 0.16, slabD),
+                    new THREE.MeshStandardMaterial({
+                        color: fl >= 2 ? 0xf8fafc : 0xf1f5f9,
+                        roughness: 0.75
+                    })
+                );
+                slab.position.set(slabCx, yBase - 0.08, slabCz);
+                scannedMapGroup.add(slab);
+            });
+
             scannedPaths.forEach(p => {
                 const tile = new THREE.Mesh(
                     new THREE.BoxGeometry(0.75, 0.04, 0.75),
@@ -3213,30 +3252,66 @@
             displayCases.forEach(dc => {
                 const group = new THREE.Group();
                 const yBase = (dc.floor - 1) * 3.5;
-                const pedH = 0.7;
-                const glassH = Math.max(0.6, (dc.height || 1.8) - pedH);
 
-                const ped = new THREE.Mesh(
-                    new THREE.BoxGeometry(dc.width, pedH, dc.depth),
-                    new THREE.MeshStandardMaterial({ color: 0x1e293b })
-                );
-                ped.position.y = pedH / 2;
-                group.add(ped);
+                if (dc.isStair) {
+                    const stairW = dc.width || 1.2;
+                    const stairL = dc.depth || 2.2;
+                    const stairH = dc.height || 3.5;
+                    const stepCount = 12;
+                    const stepMat = new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.65 });
+                    const railMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.3, roughness: 0.5 });
 
-                const glassGeo = new THREE.BoxGeometry(dc.width, glassH, dc.depth);
-                const glassMesh = new THREE.Mesh(
-                    glassGeo,
-                    new THREE.MeshStandardMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.32, roughness: 0.1 })
-                );
-                glassMesh.position.y = pedH + glassH / 2;
-                group.add(glassMesh);
+                    for (let s = 0; s < stepCount; s++) {
+                        const frac = (s + 0.5) / stepCount;
+                        const stepH = Math.max(0.12, stairH / stepCount);
+                        const stepMesh = new THREE.Mesh(
+                            new THREE.BoxGeometry(stairW, stepH, stairL / stepCount + 0.04),
+                            stepMat
+                        );
+                        stepMesh.position.set(
+                            0,
+                            frac * stairH,
+                            -stairL / 2 + frac * stairL
+                        );
+                        group.add(stepMesh);
+                    }
 
-                const edges = new THREE.LineSegments(
-                    new THREE.EdgesGeometry(glassGeo),
-                    new THREE.LineBasicMaterial({ color: 0x0284c7 })
-                );
-                edges.position.copy(glassMesh.position);
-                group.add(edges);
+                    // Hai thanh lan can 2 bên cầu thang
+                    [-stairW / 2 + 0.04, stairW / 2 - 0.04].forEach(rx => {
+                        const rail = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.06, 0.06, Math.hypot(stairL, stairH)),
+                            railMat
+                        );
+                        rail.position.set(rx, stairH / 2 + 0.85, 0);
+                        rail.rotation.x = Math.atan2(stairH, stairL);
+                        group.add(rail);
+                    });
+                } else {
+                    const pedH = 0.7;
+                    const glassH = Math.max(0.6, (dc.height || 1.8) - pedH);
+
+                    const ped = new THREE.Mesh(
+                        new THREE.BoxGeometry(dc.width, pedH, dc.depth),
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b })
+                    );
+                    ped.position.y = pedH / 2;
+                    group.add(ped);
+
+                    const glassGeo = new THREE.BoxGeometry(dc.width, glassH, dc.depth);
+                    const glassMesh = new THREE.Mesh(
+                        glassGeo,
+                        new THREE.MeshStandardMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.32, roughness: 0.1 })
+                    );
+                    glassMesh.position.y = pedH + glassH / 2;
+                    group.add(glassMesh);
+
+                    const edges = new THREE.LineSegments(
+                        new THREE.EdgesGeometry(glassGeo),
+                        new THREE.LineBasicMaterial({ color: 0x0284c7 })
+                    );
+                    edges.position.copy(glassMesh.position);
+                    group.add(edges);
+                }
 
                 group.position.set(dc.position.x, yBase, dc.position.z);
                 group.rotation.y = -(dc.angle || 0);
@@ -3373,31 +3448,82 @@
             }
             showToast(isFirstPersonMode ? '👁️ Đã bật Góc nhìn thứ nhất (nhìn từ mắt nhân vật).' : '🎥 Đã quay về Góc nhìn thứ 3.');
         }
+        let fpYaw = null;
+        let fpPitch = 0;
+        let fpDragState = { active: false, lastX: 0, lastY: 0 };
+
+        function initFirstPersonLookControls() {
+            const container = document.getElementById('map3dCanvas');
+            if (!container || container.dataset.fpBound) return;
+            container.dataset.fpBound = '1';
+
+            const onDown = (x, y) => {
+                if (!isFirstPersonMode) return;
+                fpDragState.active = true;
+                fpDragState.lastX = x;
+                fpDragState.lastY = y;
+            };
+            const onMove = (x, y) => {
+                if (!isFirstPersonMode || !fpDragState.active) return;
+                const dx = x - fpDragState.lastX;
+                const dy = y - fpDragState.lastY;
+                fpDragState.lastX = x;
+                fpDragState.lastY = y;
+                if (fpYaw === null) {
+                    fpYaw = (userAvatarMesh && typeof userAvatarMesh.rotation.y === 'number') ? userAvatarMesh.rotation.y : 0;
+                }
+                fpYaw -= dx * 0.006;
+                fpPitch = Math.max(-1.1, Math.min(1.1, fpPitch - dy * 0.005));
+            };
+            const onUp = () => {
+                fpDragState.active = false;
+            };
+
+            container.addEventListener('mousedown', e => onDown(e.clientX, e.clientY));
+            window.addEventListener('mousemove', e => onMove(e.clientX, e.clientY));
+            window.addEventListener('mouseup', onUp);
+            container.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) onDown(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            container.addEventListener('touchmove', e => {
+                if (e.touches.length === 1) onMove(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            container.addEventListener('touchend', onUp);
+        }
+
         function animateMap3D() {
             requestAnimationFrame(animateMap3D);
+            initFirstPersonLookControls();
             const now = performance.now();
             const delta = Math.min(0.1, (now - lastAnimTime) / 1000);
             lastAnimTime = now;
             updateUserAvatarAnimation(delta);
             const activeAvatar = (typeof userAvatarMesh !== 'undefined' && userAvatarMesh) ? userAvatarMesh : null;
 
-            if (controls && !isFirstPersonMode) controls.update();
+            if (controls) {
+                controls.enabled = !isFirstPersonMode;
+                if (!isFirstPersonMode) controls.update();
+            }
             if (isFirstPersonMode && activeAvatar) {
                 const eyeHeight = 1.6;
                 const activeFloor = userPos.floor || 1;
                 const floorY = (activeFloor - 1) * 3.5;
                 camera.position.set(activeAvatar.position.x, floorY + eyeHeight, activeAvatar.position.z);
+                if (fpYaw === null) {
+                    fpYaw = activeAvatar.rotation.y || 0;
+                }
+                activeAvatar.rotation.y = fpYaw;
                 const lookDist = 4;
-                const yaw = activeAvatar.rotation.y || 0;
+                const cosPitch = Math.cos(fpPitch);
                 camera.lookAt(
-                    activeAvatar.position.x + Math.sin(yaw) * lookDist,
-                    floorY + eyeHeight,
-                    activeAvatar.position.z + Math.cos(yaw) * lookDist
+                    activeAvatar.position.x + Math.sin(fpYaw) * cosPitch * lookDist,
+                    floorY + eyeHeight + Math.sin(fpPitch) * lookDist,
+                    activeAvatar.position.z + Math.cos(fpYaw) * cosPitch * lookDist
                 );
 
                 // Tự động chuyển tầng khi bước vào vùng cầu thang
                 const stair = displayCases.find(c => c.isStair);
-                if (stair && Math.hypot(activeAvatar.position.x - stair.position.x, activeAvatar.position.z - stair.position.z) < 0.9) {
+                if (stair && Math.hypot(activeAvatar.position.x - stair.position.x, activeAvatar.position.z - stair.position.z) < 1.35) {
                     if (!window._stairCooldown) {
                         window._stairCooldown = true;
                         const nextFloor = activeFloor === 1 ? 2 : 1;
@@ -3409,6 +3535,9 @@
                         setTimeout(() => { window._stairCooldown = false; }, 3000);
                     }
                 }
+            } else {
+                fpYaw = null;
+                fpPitch = 0;
             }
             if (renderer && scene && camera) renderer.render(scene, camera);
         }
@@ -3459,8 +3588,24 @@
 
         function moveUserStep(dx, dz) {
             const step = 0.6;
-            const nx = userPos.x + dx * step;
-            const nz = userPos.z + dz * step;
+            let moveX = dx * step;
+            let moveZ = dz * step;
+
+            // Khi đang ở Góc nhìn thứ nhất, ▲/▼/◀/▶ di chuyển tương ứng với hướng nhìn của mắt nhân vật
+            if (isFirstPersonMode) {
+                const yaw = (fpYaw !== null) ? fpYaw : (userAvatarMesh ? userAvatarMesh.rotation.y || 0 : 0);
+                const fwdX = Math.sin(yaw);
+                const fwdZ = Math.cos(yaw);
+                const rightX = Math.cos(yaw);
+                const rightZ = -Math.sin(yaw);
+                const forwardInput = -dz;
+                const rightInput = dx;
+                moveX = (fwdX * forwardInput + rightX * rightInput) * step;
+                moveZ = (fwdZ * forwardInput + rightZ * rightInput) * step;
+            }
+
+            const nx = userPos.x + moveX;
+            const nz = userPos.z + moveZ;
             if (isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
                 showToast('🚧 Đụng tường hoặc tủ kính rồi!');
                 return;
@@ -3907,6 +4052,7 @@
                 oCont.classList.add('flex');
                 switchOwnerSubTab(currentOwnerSubTab);
             } else {
+                return3dToVisitorMap();
                 oCont.classList.add('hidden');
                 oCont.classList.remove('flex');
                 vCont.classList.remove('hidden');
@@ -3929,6 +4075,32 @@
             if (tab === 'map') setTimeout(resizeMap3D, 60);
         }
 
+        function attachLive3dToOwnerPreview() {
+            const previewBox = document.getElementById('ownerLive3dPreviewBox');
+            const mapWrapper = document.getElementById('map3dWrapper');
+            const mapCanvas = document.getElementById('map3dCanvas');
+            if (!previewBox || !mapCanvas || !renderer) return;
+            if (mapCanvas.parentElement !== previewBox) {
+                previewBox.innerHTML = '';
+                previewBox.appendChild(mapCanvas);
+            }
+            useScannedMapMode = true;
+            applyMapSourceVisibility();
+            rebuildScannedMap3D();
+            rebuildMapPins();
+            resizeMap3D();
+        }
+
+        function return3dToVisitorMap() {
+            const mapWrapper = document.getElementById('map3dWrapper');
+            const mapCanvas = document.getElementById('map3dCanvas');
+            if (!mapWrapper || !mapCanvas || !renderer) return;
+            if (mapCanvas.parentElement !== mapWrapper) {
+                mapWrapper.insertBefore(mapCanvas, mapWrapper.firstChild);
+            }
+            resizeMap3D();
+        }
+
         function switchOwnerSubTab(sub) {
             currentOwnerSubTab = sub;
             ['scan', 'add', 'manage'].forEach(s => {
@@ -3944,8 +4116,12 @@
             if (sub === 'scan') {
                 checkWebXRCapabilities();
                 CameraManager.start(document.getElementById('ownerCameraVideo'));
-                setTimeout(renderVectorMiniMap, 80);
+                setTimeout(() => {
+                    renderVectorMiniMap();
+                    attachLive3dToOwnerPreview();
+                }, 80);
             } else {
+                return3dToVisitorMap();
                 CameraManager.stop();
             }
         }
