@@ -551,12 +551,28 @@
                             </div>
                         </div>
                     </div>
-                    <!-- CHẠM MINI-MAP ĐỂ ĐẶT VỊ TRÍ HIỆN VẬT / TỦ KÍNH -->
-                    <div class="p-2 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1.5">
-                        <label class="text-[10px] font-extrabold text-navy block">📍 Chạm lên Mini-Map 2D để dời vị trí:</label>
-                        <select id="miniMapPlaceTarget" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-300 text-[11px] font-bold text-navy">
+                    <!-- CHỈNH VỊ TRÍ HIỆN VẬT / TỦ KÍNH BẰNG NÚT MŨI TÊN -->
+                    <div class="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 space-y-2">
+                        <label class="text-[10px] font-extrabold text-navy block">📍 Chọn Hiện vật / Tủ kính để dời vị trí:</label>
+                        <select id="miniMapPlaceTarget" onchange="onSelectMiniMapObject(this.value)" class="w-full px-2.5 py-1.5 rounded-lg bg-white border border-indigo-300 text-[11px] font-bold text-navy">
                             <option value="pan">✋ Chế độ kéo xem bản đồ (Mặc định)</option>
                         </select>
+                        <div id="quickObjControls" class="hidden space-y-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold text-slate-500">X:</span>
+                                <input type="number" step="0.1" id="quickObjX" class="w-20 px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold" placeholder="X (m)">
+                                <span class="text-[10px] font-bold text-slate-500">Z:</span>
+                                <input type="number" step="0.1" id="quickObjZ" class="w-20 px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold" placeholder="Z (m)">
+                                <button type="button" onclick="saveQuickObjPos()" class="flex-1 py-1 rounded-lg bg-indigo-600 text-white font-bold text-[11px] active:scale-95">Lưu</button>
+                            </div>
+                            <div class="grid grid-cols-5 gap-1">
+                                <button type="button" onclick="nudgeSelectedObject(-0.25, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">⬅️</button>
+                                <button type="button" onclick="nudgeSelectedObject(0, -0.25)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">⬆️</button>
+                                <button type="button" onclick="nudgeSelectedObject(0, 0.25)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">⬇️</button>
+                                <button type="button" onclick="nudgeSelectedObject(0.25, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">➡️</button>
+                                <button type="button" onclick="rotateSelectedObject(15)" class="py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-[10px] font-extrabold text-amber-900 active:scale-95">↻15°</button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- CHỈNH KÍCH THƯỚC TỶ LỆ THỰC 1:1 (MÉT) & DỜI / XOAY CỤM PHÒNG -->
@@ -1864,6 +1880,86 @@
             });
             sel.innerHTML = html;
             if (Array.from(sel.options).some(o => o.value === prev)) sel.value = prev;
+        }
+        function onSelectMiniMapObject(val) {
+            const box = document.getElementById('quickObjControls');
+            if (!box) return;
+            if (!val || val === 'pan') {
+                box.classList.add('hidden');
+                return;
+            }
+            const [kind, id] = val.split(':');
+            let x = 0, z = 0;
+            if (kind === 'art') {
+                const art = artifacts.find(a => a.id === id);
+                if (!art) { box.classList.add('hidden'); return; }
+                x = art.x || 0;
+                z = art.z || 0;
+            } else if (kind === 'case') {
+                const dc = displayCases.find(c => c.id === id);
+                if (!dc) { box.classList.add('hidden'); return; }
+                x = dc.position.x || 0;
+                z = dc.position.z || 0;
+            }
+            document.getElementById('quickObjX').value = Number(x).toFixed(2);
+            document.getElementById('quickObjZ').value = Number(z).toFixed(2);
+            box.classList.remove('hidden');
+        }
+
+        function saveQuickObjPos() {
+            const sel = document.getElementById('miniMapPlaceTarget');
+            if (!sel || sel.value === 'pan') return;
+            const x = parseFloat(document.getElementById('quickObjX')?.value);
+            const z = parseFloat(document.getElementById('quickObjZ')?.value);
+            if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+
+            const [kind, id] = sel.value.split(':');
+            if (kind === 'art') {
+                const art = artifacts.find(a => a.id === id);
+                if (art) { art.x = x; art.z = z; saveArtifactsLocal(); refreshAllUI(); }
+            } else if (kind === 'case') {
+                const dc = displayCases.find(c => c.id === id);
+                if (dc) { dc.position.x = x; dc.position.z = z; saveScannedMapLocal(); refreshAllUI(); }
+            }
+            showToast(`📍 Đã lưu tọa độ (${x.toFixed(2)}m, ${z.toFixed(2)}m).`);
+        }
+
+        function nudgeSelectedObject(dx, dz) {
+            const sel = document.getElementById('miniMapPlaceTarget');
+            if (!sel || sel.value === 'pan') return;
+            const [kind, id] = sel.value.split(':');
+            if (kind === 'art') {
+                const art = artifacts.find(a => a.id === id);
+                if (!art) return;
+                art.x = Math.round(((art.x || 0) + dx) * 100) / 100;
+                art.z = Math.round(((art.z || 0) + dz) * 100) / 100;
+                saveArtifactsLocal();
+                refreshAllUI();
+                onSelectMiniMapObject(sel.value);
+            } else if (kind === 'case') {
+                const dc = displayCases.find(c => c.id === id);
+                if (!dc) return;
+                dc.position.x = Math.round(((dc.position.x || 0) + dx) * 100) / 100;
+                dc.position.z = Math.round(((dc.position.z || 0) + dz) * 100) / 100;
+                saveScannedMapLocal();
+                refreshAllUI();
+                onSelectMiniMapObject(sel.value);
+            }
+        }
+
+        function rotateSelectedObject(deg) {
+            const sel = document.getElementById('miniMapPlaceTarget');
+            if (!sel || sel.value === 'pan') return;
+            const [kind, id] = sel.value.split(':');
+            if (kind === 'case') {
+                const dc = displayCases.find(c => c.id === id);
+                if (!dc) return;
+                dc.angle = (dc.angle || 0) + (deg * Math.PI) / 180;
+                saveScannedMapLocal();
+                refreshAllUI();
+            } else {
+                showToast('Hiện vật trên bệ trưng bày nhìn rõ 360°, nút xoay áp dụng cho Tủ kính.');
+            }
         }
 
         function placeSelectedObjectAtCanvasPoint(clientX, clientY) {
