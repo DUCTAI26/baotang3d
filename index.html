@@ -1,0 +1,3117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Bắt buộc để phát âm thanh Google Cloud TTS không bị chặn lỗi 403 -->
+    <meta name="referrer" content="no-referrer">
+    <title>Bảo Tàng Đà Nẵng 3D - Dẫn đường &amp; Quét AR thông minh</title>
+
+    <!-- Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        navy: { DEFAULT: '#0f294a', light: '#1a3f6e', dark: '#091a30' },
+                        navgreen: { DEFAULT: '#16a34a', dark: '#15803d' },
+                        accent: { DEFAULT: '#ea580c', dark: '#c2410c', soft: '#ffedd5' }
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Three.js r128 UMD -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <style>
+        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #091a30;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes scanLine {
+            0% { top: 8%; opacity: 0.45; }
+            50% { top: 88%; opacity: 1; }
+            100% { top: 8%; opacity: 0.45; }
+        }
+        .scan-laser {
+            position: absolute;
+            left: 6%;
+            right: 6%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ea580c, #fde047, #ea580c, transparent);
+            box-shadow: 0 0 12px #ea580c;
+            animation: scanLine 2.1s ease-in-out infinite;
+        }
+
+        @keyframes waveBounce {
+            0%, 100% { transform: scaleY(0.35); }
+            50% { transform: scaleY(1); }
+        }
+        .wave-bar {
+            width: 3px;
+            height: 14px;
+            border-radius: 99px;
+            background-color: #ea580c;
+            animation: waveBounce 0.8s ease-in-out infinite;
+        }
+        .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+        .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+        .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+
+        @keyframes stepFlash {
+            0% { transform: scale(1.16); background-color: #16a34a; color: #ffffff; }
+            100% { transform: scale(1); }
+        }
+        .step-pulse { animation: stepFlash 0.35s ease-out; }
+    </style>
+</head>
+<body class="flex items-center justify-center sm:p-4 bg-[#091a30] text-slate-800">
+
+    <!-- KHUNG ỨNG DỤNG DI ĐỘNG -->
+    <div id="appShell" class="relative w-full h-[100dvh] sm:w-[420px] sm:h-[850px] sm:max-h-[95dvh] bg-slate-50 sm:rounded-[34px] sm:shadow-2xl sm:border-[6px] sm:border-slate-800/90 flex flex-col overflow-hidden">
+
+        <!-- =============================================================== -->
+        <!-- 1. THANH HEADER TRÊN CÙNG                                       -->
+        <!-- =============================================================== -->
+        <header class="bg-white border-b border-slate-200 px-3.5 py-2.5 z-30 shrink-0 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+                <!-- Logo Bảo tàng: Chạm 5 lần liên tiếp trong 3s để mở cổng Chủ sở hữu -->
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <button type="button" id="secretAdminLogo" onclick="handleSecretLogoTap()" title="Bảo Tàng Đà Nẵng 3D" class="w-10 h-10 rounded-xl bg-navy text-white flex items-center justify-center shrink-0 shadow-sm active:scale-95 transition select-none">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 21h18M4 18h16M6 18V9m4 9V9m4 9V9m4 9V9M2 9l10-6 10 6H2z"/>
+                        </svg>
+                    </button>
+                    <div class="min-w-0">
+                        <h1 class="text-[14px] font-extrabold text-navy leading-tight truncate">Bảo Tàng Đà Nẵng 3D</h1>
+                        <p id="headerModeSub" class="text-[10px] font-medium text-slate-500 truncate">Dẫn đường &amp; Quét AR thông minh</p>
+                    </div>
+                </div>
+
+                <!-- KHU VỰC QUẢN TRỊ (ẨN HOÀN TOÀN MẶC ĐỊNH VỚI KHÁCH) -->
+                <div id="adminModeControls" class="hidden items-center gap-1.5 shrink-0">
+                    <div class="bg-slate-100 p-0.5 rounded-xl flex items-center border border-slate-200">
+                        <button type="button" onclick="switchAppMode('visitor')" id="modeBtn-visitor" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-navy text-white shadow-sm transition">
+                            Khách
+                        </button>
+                        <button type="button" onclick="switchAppMode('owner')" id="modeBtn-owner" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:text-navy transition">
+                            Chủ sở hữu
+                        </button>
+                    </div>
+                    <button type="button" onclick="logoutAdmin()" title="Đăng xuất Chủ sở hữu" class="w-8 h-8 rounded-xl bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white flex items-center justify-center active:scale-95 transition">
+                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0110 0v4"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thanh điều khiển âm thanh AI 2 lớp -->
+            <div class="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button type="button" onclick="unlockAndTestAudio()" id="audioUnlockBtn" class="px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 active:scale-95 transition">
+                    <span id="audioIcon">🔊</span>
+                    <span id="audioBtnText">Bật tiếng</span>
+                </button>
+                <div class="flex items-center gap-1.5">
+                    <button type="button" onclick="toggleVoiceEngine()" id="voiceEngineBtn" class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 active:scale-95 transition">
+                        ☁️ Giọng Cloud
+                    </button>
+                    <button type="button" onclick="stopSpeaking()" id="stopAudioBtn" class="hidden px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
+                        ⏹ Dừng
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thanh phụ đề giọng đọc AI -->
+            <div id="subtitleBar" class="hidden mt-2 px-2.5 py-1.5 rounded-xl bg-orange-50 border border-orange-200 flex items-center gap-2">
+                <div class="flex items-end gap-0.5 h-3.5 shrink-0">
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                    <span class="wave-bar"></span>
+                </div>
+                <p id="subtitleText" class="text-[11px] font-medium text-orange-900 truncate flex-1">Đang thuyết minh...</p>
+            </div>
+        </header>
+
+        <!-- =============================================================== -->
+        <!-- 2. NỘI DUNG CHÍNH: CHẾ ĐỘ KHÁCH THAM QUAN                       -->
+        <!-- =============================================================== -->
+        <main id="visitorContainer" class="flex-1 flex flex-col min-h-0 relative overflow-hidden">
+
+            <!-- TAB 1: BẢN ĐỒ 3D -->
+            <section id="tab-map" class="flex-1 flex flex-col min-h-0 relative">
+                <!-- Thanh chế độ định vị -->
+                <div class="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between gap-1.5 bg-white/95 backdrop-blur p-1.5 rounded-2xl shadow-md border border-slate-200/80">
+                    <button type="button" onclick="setNavTrackingMode('gps')" id="trackBtn-gps" class="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition">
+                        🛰️ GPS Thực tế
+                    </button>
+                    <button type="button" onclick="setNavTrackingMode('indoor')" id="trackBtn-indoor" class="flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm transition">
+                        🚶 Trong nhà
+                    </button>
+                    <button type="button" onclick="toggleCompass()" id="compassBtn" class="py-1.5 px-2.5 rounded-xl text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 transition">
+                        🧭 La bàn
+                    </button>
+                </div>
+
+                <!-- Banner dẫn đường kiểu Google Maps -->
+                <div id="navBanner" class="hidden absolute top-16 left-2.5 right-2.5 z-20 bg-navgreen text-white p-3 rounded-2xl shadow-lg border border-emerald-400/40">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div id="navArrowBox" class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg font-extrabold shrink-0">⬆️</div>
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-1.5">
+                                    <span id="navDistBadge" class="text-[11px] font-extrabold bg-black/20 px-2 py-0.5 rounded-full">0.0 m</span>
+                                    <span id="navFloorBadge" class="text-[10px] font-semibold bg-white/20 px-1.5 py-0.5 rounded-full">Tầng 1</span>
+                                </div>
+                                <p id="navTargetName" class="text-[13px] font-extrabold truncate mt-0.5">Đích đến</p>
+                                <p id="navInstruction" class="text-[11px] text-emerald-50 leading-snug">Đang tính toán lộ trình...</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="stopNavigation()" class="px-2.5 py-1 rounded-xl bg-white/20 hover:bg-white/30 text-[11px] font-bold shrink-0">
+                            ✕ Dừng
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Khung Canvas 3D -->
+                <div id="map3dWrapper" class="relative flex-1 bg-slate-200 overflow-hidden">
+                    <div id="map3dCanvas" class="w-full h-full"></div>
+
+                    <!-- Nút chọn tầng, Nhân vật Nam/Nữ & Zoom bên phải -->
+                    <div class="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-2">
+                        <div class="bg-white/95 backdrop-blur rounded-2xl shadow-md border border-slate-200 p-1 flex flex-col gap-1">
+                            <button type="button" onclick="setFloorView('2')" id="floorBtn-2" class="w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100">T2</button>
+                            <button type="button" onclick="setFloorView('1')" id="floorBtn-1" class="w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100">T1</button>
+                            <button type="button" onclick="setFloorView('all')" id="floorBtn-all" class="w-9 h-8 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm">Cả 2</button>
+                        </div>
+                        <div class="bg-white/95 backdrop-blur rounded-2xl shadow-md border border-slate-200 p-1 flex flex-col gap-1">
+                            <button type="button" onclick="toggleAvatarGender()" id="avatarGenderBtn" title="Đổi nhân vật Nam / Nữ" class="w-9 h-8 rounded-xl text-[10px] font-extrabold bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 active:scale-95 transition">👩 Nữ</button>
+                        </div>
+                        <div class="bg-white/95 backdrop-blur rounded-2xl shadow-md border border-slate-200 p-1 flex flex-col gap-1">
+                            <button type="button" onclick="zoomMap3D(-2.5)" class="w-9 h-8 rounded-xl text-base font-extrabold text-navy hover:bg-slate-100 active:scale-95">+</button>
+                            <button type="button" onclick="zoomMap3D(2.5)" class="w-9 h-8 rounded-xl text-base font-extrabold text-navy hover:bg-slate-100 active:scale-95">−</button>
+                        </div>
+                    </div>
+
+                    <!-- D-pad di chuyển trong nhà góc trái dưới -->
+                    <div id="indoorDpad" class="absolute left-2.5 bottom-3 z-10 bg-white/90 backdrop-blur p-1.5 rounded-2xl shadow-md border border-slate-200/80 grid grid-cols-3 gap-1 w-[108px]">
+                        <div></div>
+                        <button type="button" onclick="moveUserStep(0, -1)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">▲</button>
+                        <div></div>
+                        <button type="button" onclick="moveUserStep(-1, 0)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">◀</button>
+                        <button type="button" onclick="toggleUserFloor()" id="dpadFloorBtn" class="h-8 rounded-lg bg-amber-100 text-amber-800 font-extrabold text-[10px] active:scale-90 transition">T1</button>
+                        <button type="button" onclick="moveUserStep(1, 0)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">▶</button>
+                        <div></div>
+                        <button type="button" onclick="moveUserStep(0, 1)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">▼</button>
+                        <div></div>
+                    </div>
+
+                    <!-- Thẻ cảnh báo ở gần hiện vật (< 2.5m) -->
+                    <div id="proximityCard" class="hidden absolute left-2.5 right-2.5 bottom-3 z-20 bg-white rounded-2xl p-2.5 shadow-xl border-2 border-amber-300 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div id="proxIcon" class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl shrink-0">🏺</div>
+                            <div class="min-w-0">
+                                <p class="text-[10px] font-extrabold text-emerald-600 uppercase tracking-wide">Bạn đang ở gần hiện vật</p>
+                                <p id="proxName" class="text-[13px] font-extrabold text-navy truncate">Tên hiện vật</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" id="proxViewBtn" class="px-3 py-1.5 rounded-xl bg-navy text-white text-[11px] font-bold active:scale-95">Xem 3D</button>
+                            <button type="button" onclick="hideProximityCard()" class="w-7 h-7 rounded-xl bg-slate-100 text-slate-500 text-xs font-bold">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dải chọn hiện vật nhanh ở đáy bản đồ -->
+                <div class="bg-white border-t border-slate-200 px-3 py-2 shrink-0">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Chọn hiện vật để chỉ đường 3D</span>
+                        <div class="flex items-center gap-1.5">
+                            <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-600 cursor-pointer">
+                                <input type="checkbox" id="autoNarrateToggle" checked class="accent-accent rounded">
+                                <span>Tự đọc AI</span>
+                            </label>
+                            <button type="button" onclick="toggleMapSourceMode()" id="mapSourceBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                                Mô hình 2 tầng
+                            </button>
+                        </div>
+                    </div>
+                    <div id="quickArtifactStrip" class="flex gap-2 overflow-x-auto no-scrollbar pb-0.5"></div>
+                </div>
+            </section>
+
+            <!-- TAB 2: QUÉT CAMERA AR (KHÁCH THAM QUAN) -->
+            <section id="tab-scan" class="hidden flex-1 flex-col min-h-0 bg-slate-900 text-white relative">
+                <div class="relative flex-1 overflow-hidden bg-black flex items-center justify-center">
+                    <video id="visitorCameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                    <div id="visitorCamFallback" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-900/95">
+                        <div class="text-4xl mb-2">📷</div>
+                        <p class="text-sm font-bold text-white mb-1">Camera chưa được kích hoạt</p>
+                        <p class="text-xs text-slate-300 mb-4">Cấp quyền Camera để quét hiện vật thật hoặc chọn ảnh từ thư viện.</p>
+                        <button type="button" onclick="restartCurrentCamera()" class="px-4 py-2 rounded-xl bg-accent text-white text-xs font-bold shadow">🔄 Bật lại Camera</button>
+                    </div>
+
+                    <!-- Khung ngắm AR -->
+                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div class="relative w-64 h-64 rounded-3xl border-2 border-white/60 shadow-[0_0_0_9999px_rgba(0,0,0,0.35)]">
+                            <div class="scan-laser"></div>
+                            <span class="absolute -top-7 left-1/2 -translate-x-1/2 bg-black/70 text-white text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                                Đưa hiện vật vào giữa khung
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Nút bật lại camera góc trên -->
+                    <button type="button" onclick="restartCurrentCamera()" class="absolute top-3 right-3 z-10 px-2.5 py-1.5 rounded-xl bg-black/60 text-white text-[11px] font-bold border border-white/20 backdrop-blur">
+                        🔄 Bật lại Camera
+                    </button>
+                </div>
+
+                <!-- Thanh điều khiển chụp & nhận diện AI -->
+                <div class="bg-slate-950 p-4 border-t border-slate-800 shrink-0">
+                    <p class="text-[11px] text-slate-300 text-center mb-3">
+                        Chụp ảnh hiện vật để AI nhận diện qua Netlify Function (chỉ gửi ảnh khi bạn đồng ý).
+                    </p>
+                    <div class="flex items-center justify-center gap-3">
+                        <label class="px-3.5 py-2.5 rounded-2xl bg-slate-800 text-slate-200 text-xs font-bold border border-slate-700 cursor-pointer active:scale-95 transition">
+                            🖼️ Chọn ảnh
+                            <input type="file" accept="image/*" class="hidden" onchange="handleVisitorPhotoUpload(event)">
+                        </label>
+                        <button type="button" onclick="captureAndRecognize()" class="flex-1 py-3 px-4 rounded-2xl bg-accent hover:bg-accent-dark text-white text-sm font-extrabold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                            <span>📸</span>
+                            <span>Quét &amp; Nhận diện AI</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: DANH SÁCH HIỆN VẬT -->
+            <section id="tab-artifacts" class="hidden flex-1 flex-col min-h-0 bg-slate-50">
+                <div class="p-3 bg-white border-b border-slate-200 shrink-0">
+                    <input type="text" id="artifactSearchInput" oninput="renderArtifactList()" placeholder="🔍 Tìm tên hiện vật, khu trưng bày..." class="w-full px-3.5 py-2 rounded-xl bg-slate-100 border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-navy">
+                </div>
+                <div id="artifactListContainer" class="flex-1 overflow-y-auto p-3 space-y-2.5"></div>
+            </section>
+        </main>
+
+        <!-- =============================================================== -->
+        <!-- 3. NỘI DUNG CHÍNH: CHẾ ĐỘ CHỦ SỞ HỮU (ADMIN)                    -->
+        <!-- =============================================================== -->
+        <main id="ownerContainer" class="hidden flex-1 flex-col min-h-0 bg-slate-50 overflow-hidden">
+            <!-- 3 Tab con của Chủ sở hữu -->
+            <div class="bg-white border-b border-slate-200 px-2.5 py-2 flex gap-1.5 shrink-0">
+                <button type="button" onclick="switchOwnerSubTab('scan')" id="ownerTab-scan" class="flex-1 py-2 px-2 rounded-xl text-[11px] font-extrabold bg-navy text-white shadow-sm transition">
+                    🧱 Quét AR &amp; Tường
+                </button>
+                <button type="button" onclick="switchOwnerSubTab('add')" id="ownerTab-add" class="flex-1 py-2 px-2 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-600 transition">
+                    📍 Thêm Hiện vật
+                </button>
+                <button type="button" onclick="switchOwnerSubTab('manage')" id="ownerTab-manage" class="flex-1 py-2 px-2 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-600 transition">
+                    ⚙️ Quản lý &amp; Data
+                </button>
+            </div>
+
+            <!-- SUB-TAB 1: QUÉT AR WEBXR & HỆ THỐNG HÌNH HỌC TƯỜNG -->
+            <div id="ownerSub-scan" class="flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Trạng thái WebXR & Nút Bật/Tắt -->
+                <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <div>
+                            <h2 class="text-xs font-extrabold text-navy">Quét Không Gian Tường 3D (WebXR AR)</h2>
+                            <p id="xrCompatText" class="text-[10px] font-semibold text-slate-500 mt-0.5">Đang kiểm tra khả năng hỗ trợ WebXR...</p>
+                        </div>
+                        <span id="xrCompatBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 shrink-0">Kiểm tra</span>
+                    </div>
+
+                    <!-- Cảnh báo rõ ràng khi trình duyệt không hỗ trợ WebXR -->
+                    <div id="xrFallbackNotice" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[10px] text-amber-900 leading-relaxed">
+                        <strong>⚠️ Chế độ Quét hỗ trợ thủ công:</strong> Trình duyệt hiện tại không hỗ trợ WebXR <code>plane-detection</code>. Hệ thống không giả lập nhận diện AR — hãy dùng bộ đếm bước chân &amp; đặt đoạn tường thủ công bên dưới.
+                    </div>
+
+                    <!-- Nút Bật/Tắt WebXR AR & Hiệu chỉnh gốc -->
+                    <div class="flex gap-1.5">
+                        <button type="button" onclick="toggleWebXRScan()" id="webxrToggleBtn" class="flex-1 py-2.5 px-3 rounded-xl bg-navy text-white text-xs font-extrabold shadow active:scale-95 transition">
+                            🚀 Bật Quét AR WebXR
+                        </button>
+                        <button type="button" onclick="calibrateAROriginFromUI()" id="calibrateArBtn" class="px-2.5 py-2.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-extrabold active:scale-95">
+                            🎯 Hiệu chỉnh
+                        </button>
+                        <button type="button" onclick="previewScannedMapAsVisitor()" class="px-2.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold active:scale-95">
+                            👁️ 3D
+                        </button>
+                    </div>
+
+                    <!-- Trạng thái hiệu chỉnh hệ tọa độ chung -->
+                    <div id="arCalibrationStatus" class="p-2 rounded-xl bg-amber-50/80 border border-amber-200 text-[10px] font-semibold text-amber-900">
+                        ⚠️ Chưa hiệu chỉnh điểm gốc AR với bản đồ bảo tàng. Vị trí thực tế chưa được khóa.
+                    </div>
+
+                    <!-- Bảng thông số nhận diện & đo đạc thời gian thực -->
+                    <div class="grid grid-cols-3 gap-1.5 text-center">
+                        <div class="bg-slate-50 rounded-xl p-2 border border-slate-200">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Khoảng cách</p>
+                            <p id="xrHitDistanceVal" class="text-sm font-extrabold text-navy">-- m</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-2 border border-slate-200">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Mặt phẳng AR</p>
+                            <p id="xrPlaneCount" class="text-sm font-extrabold text-teal-700">0</p>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-2 border border-slate-200">
+                            <p class="text-[9px] font-bold text-slate-400 uppercase">Tường đã lưu</p>
+                            <p id="savedWallCount" class="text-sm font-extrabold text-emerald-600">0</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-[10px] bg-slate-50 p-2 rounded-xl border border-slate-200">
+                        <div>📏 Tường gần nhất: <strong id="xrLastWallMeasure" class="text-navy">--</strong></div>
+                        <div>🔗 Ghép nối: <strong id="wallMergeStatus" class="text-accent">Sẵn sàng</strong></div>
+                    </div>
+                    <p id="xrPlaneStatusText" class="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
+                        Trạng thái: Chưa phát hiện mặt phẳng. Di chuyển camera chậm để quét đủ bề mặt.
+                    </p>
+                </div>
+
+                <!-- Khung Camera & Chụp Hiện vật / Tủ kính (Chủ sở hữu) -->
+                <div class="bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-sm">
+                    <div class="relative h-44 bg-black flex items-center justify-center">
+                        <video id="ownerCameraVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+                        <div class="absolute top-2 left-2 bg-black/65 text-white text-[10px] font-bold px-2.5 py-1 rounded-full backdrop-blur">
+                            🧭 <span id="ownerHeadingVal">0°</span> • Tầng <span id="ownerFloorVal">1</span>
+                        </div>
+                        <button type="button" onclick="restartCurrentCamera()" class="absolute top-2 right-2 px-2 py-1 rounded-lg bg-black/65 text-white text-[10px] font-bold border border-white/20">
+                            🔄 Bật lại Cam
+                        </button>
+                    </div>
+                    <div class="p-2.5 flex gap-2 bg-slate-950">
+                        <button type="button" onclick="captureOwnerArtifactWithAI()" class="flex-1 py-2 px-3 rounded-xl bg-accent text-white text-[11px] font-extrabold active:scale-95">
+                            📸 Chụp Hiện vật / Tủ kính (AI)
+                        </button>
+                        <label class="py-2 px-3 rounded-xl bg-slate-800 text-slate-200 text-[11px] font-bold border border-slate-700 cursor-pointer">
+                            🖼️ Tải ảnh
+                            <input type="file" accept="image/*" class="hidden" onchange="handleOwnerPhotoUpload(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Chế độ Quét hỗ trợ thủ công (Pedometer + Đặt đoạn tường thủ công) -->
+                <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-extrabold text-navy">Quét hỗ trợ thủ công (Bước chân &amp; La bàn)</h3>
+                        <span id="stepCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">0 bước</span>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-semibold">
+                            <span>Cảm biến bước cầm tay (Hand-held Pedometer)</span>
+                            <span id="pedometerAccelVal">0.00 m/s²</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="pedometerMeterBar" class="h-full bg-emerald-500 transition-all duration-75" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-1.5">
+                        <button type="button" onclick="toggleWalkingRecord()" id="walkRecordBtn" class="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-extrabold active:scale-95">
+                            ▶️ Ghi lối đi
+                        </button>
+                        <select id="stepSensitivitySelect" onchange="updatePedometerSettings()" class="px-2 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700">
+                            <option value="0.45" selected>Rất nhạy (0.45)</option>
+                            <option value="0.75">Vừa (0.75)</option>
+                            <option value="1.15">Thấp (1.15)</option>
+                        </select>
+                        <select id="stepLengthSelect" onchange="updatePedometerSettings()" class="px-2 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-[10px] font-bold text-slate-700">
+                            <option value="0.6">0.6m</option>
+                            <option value="0.7" selected>0.7m</option>
+                            <option value="0.8">0.8m</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" onclick="ownerTurn(-45)" class="py-1.5 rounded-xl bg-slate-100 text-navy text-[11px] font-bold active:scale-95">↺ Xoay trái</button>
+                        <button type="button" onclick="ownerStepForward()" class="py-1.5 rounded-xl bg-navy text-white text-[11px] font-bold active:scale-95">⬆️ Bước tới</button>
+                        <button type="button" onclick="ownerTurn(45)" class="py-1.5 rounded-xl bg-slate-100 text-navy text-[11px] font-bold active:scale-95">↻ Xoay phải</button>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-100">
+                        <p class="text-[10px] font-bold text-slate-500 mb-1.5">Đặt đoạn tường thủ công (tự động ghép nối đồng phẳng &amp; bắt góc):</p>
+                        <div class="grid grid-cols-3 gap-1.5">
+                            <button type="button" onclick="addManualWallSegment('left')" class="py-2 rounded-xl bg-orange-50 text-accent border border-orange-200 text-[11px] font-extrabold active:scale-95">+ Tường trái</button>
+                            <button type="button" onclick="addManualWallSegment('front')" class="py-2 rounded-xl bg-orange-50 text-accent border border-orange-200 text-[11px] font-extrabold active:scale-95">+ Tường trước</button>
+                            <button type="button" onclick="addManualWallSegment('right')" class="py-2 rounded-xl bg-orange-50 text-accent border border-orange-200 text-[11px] font-extrabold active:scale-95">+ Tường phải</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MINI-MAP VECTOR 2D THUẦN TỪ DỮ LIỆU HÌNH HỌC 3D -->
+                <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2">
+                    <div class="flex items-center justify-between gap-2">
+                        <div>
+                            <h3 class="text-xs font-extrabold text-navy">Mini-Map Vector 2D (Hệ tọa độ mét)</h3>
+                            <span class="text-[9px] font-semibold text-slate-400">Lưới phụ 0.25m • Lưới chính 1m • Kéo để di chuyển</span>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button type="button" onclick="zoomMiniMap(2)" class="w-7 h-7 rounded-lg bg-slate-100 text-navy font-extrabold text-xs active:scale-95">+</button>
+                            <button type="button" onclick="zoomMiniMap(-2)" class="w-7 h-7 rounded-lg bg-slate-100 text-navy font-extrabold text-xs active:scale-95">−</button>
+                            <button type="button" onclick="centerMiniMap()" class="px-2 h-7 rounded-lg bg-navy text-white font-bold text-[10px] active:scale-95">Căn giữa</button>
+                        </div>
+                    </div>
+                    <div class="w-full h-52 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden relative touch-none">
+                        <canvas id="vectorMiniMapCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+                    </div>
+                    <div class="flex flex-wrap gap-2 text-[9px] font-bold text-slate-500">
+                        <span class="flex items-center gap-1"><span class="w-3 h-1 bg-teal-700 inline-block"></span> Tường AR</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-1 bg-blue-600 inline-block"></span> Tường thủ công</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-1 bg-amber-500 inline-block"></span> Nối chưa chắc chắn</span>
+                    </div>
+                </div>
+
+                <!-- Danh sách đoạn tường đã quét (Xem trước & Xóa đoạn sai) -->
+                <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-extrabold text-navy">Danh sách đoạn tường đã lưu</h3>
+                        <button type="button" onclick="clearAllScannedWalls()" class="text-[10px] font-bold text-red-600 hover:underline">Xóa tất cả tường</button>
+                    </div>
+                    <div id="scannedWallsList" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- SUB-TAB 2: THÊM HIỆN VẬT THỦ CÔNG -->
+            <div id="ownerSub-add" class="hidden flex-1 overflow-y-auto p-3 space-y-3">
+                <form id="manualArtifactForm" onsubmit="submitManualArtifact(event)" class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2.5">
+                    <h2 class="text-xs font-extrabold text-navy">Thêm Hiện vật mới vào Bản đồ 3D</h2>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600">Tên hiện vật *</label>
+                        <input type="text" id="artNameInput" required placeholder="VD: Trống đồng Đông Sơn" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600">Loại / Danh mục</label>
+                            <input type="text" id="artCategoryInput" placeholder="VD: Khảo cổ / Vũ khí" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600">Tầng</label>
+                            <select id="artFloorInput" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold">
+                                <option value="1">Tầng 1</option>
+                                <option value="2">Tầng 2</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600">Tọa độ X (mét)</label>
+                            <input type="number" step="0.1" id="artXInput" value="0" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-600">Tọa độ Z (mét)</label>
+                            <input type="number" step="0.1" id="artZInput" value="0" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600">1. Đây là vật gì?</label>
+                        <textarea id="artWhatInput" rows="2" placeholder="Mô tả ngắn gọn..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600">2. Dùng làm gì?</label>
+                        <textarea id="artUseInput" rows="2" placeholder="Công dụng chính..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600">3. Câu chuyện lịch sử</label>
+                        <textarea id="artStoryInput" rows="2" placeholder="Câu chuyện thú vị..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl bg-navy text-white text-xs font-extrabold shadow active:scale-95">
+                        💾 Lưu Hiện vật lên Bản đồ 3D
+                    </button>
+                </form>
+            </div>
+
+            <!-- SUB-TAB 3: QUẢN LÝ & DỮ LIỆU -->
+            <div id="ownerSub-manage" class="hidden flex-1 overflow-y-auto p-3 space-y-3">
+                <!-- Nạp mô hình không gian 3D (.glb/.gltf) lưu IndexedDB -->
+                <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2.5">
+                    <h2 class="text-xs font-extrabold text-navy">Mô hình Không gian 3D (.glb / .gltf)</h2>
+                    <p id="glbStatusText" class="text-[11px] text-slate-500">Chưa nạp mô hình không gian .glb (đang dùng mô hình mặc định / bản đồ quét).</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="py-2.5 px-3 rounded-xl bg-navy text-white text-xs font-bold text-center cursor-pointer active:scale-95">
+                            📦 Tải file .GLB
+                            <input type="file" accept=".glb,.gltf" class="hidden" onchange="handleGlbUpload(event)">
+                        </label>
+                        <button type="button" onclick="clearSavedGlbModel()" class="py-2.5 px-3 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-bold active:scale-95">
+                            🗑️ Xóa file .GLB
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Xuất / Nhập JSON -->
+                <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2.5">
+                    <h2 class="text-xs font-extrabold text-navy">Sao lưu &amp; Đồng bộ Dữ liệu JSON</h2>
+                    <p class="text-[11px] text-slate-500">Hỗ trợ đầy đủ tường 3D, lối đi, tủ kính và hiện vật (tương thích ngược dữ liệu cũ).</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="exportAllDataJSON()" class="py-2.5 px-3 rounded-xl bg-navy text-white text-xs font-bold active:scale-95">
+                            ⬇️ Xuất JSON
+                        </button>
+                        <label class="py-2.5 px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold text-center cursor-pointer active:scale-95">
+                            ⬆️ Nhập JSON
+                            <input type="file" accept=".json,application/json" class="hidden" onchange="importAllDataJSON(event)">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Danh sách Tủ kính 3D -->
+                <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2">
+                    <h3 class="text-xs font-extrabold text-navy">Tủ kính 3D đã nhận diện (<span id="displayCaseCount">0</span>)</h3>
+                    <div id="displayCasesList" class="space-y-1.5 max-h-40 overflow-y-auto"></div>
+                </div>
+
+                <!-- Quản lý Hiện vật -->
+                <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2">
+                    <h3 class="text-xs font-extrabold text-navy">Danh sách Hiện vật (<span id="ownerArtifactCount">0</span>)</h3>
+                    <div id="ownerArtifactsList" class="space-y-1.5 max-h-56 overflow-y-auto"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- =============================================================== -->
+        <!-- 4. THANH ĐIỀU HƯỚNG 3 TAB DƯỚI ĐÁY (KHÁCH THAM QUAN)            -->
+        <!-- =============================================================== -->
+        <nav id="visitorBottomNav" class="bg-white border-t border-slate-200 px-4 py-1.5 flex items-center justify-around shrink-0 z-30">
+            <button type="button" onclick="switchVisitorTab('map')" id="navTab-map" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-navy font-extrabold">
+                <span class="text-lg leading-none">🗺️</span>
+                <span class="text-[10px]">Bản đồ 3D</span>
+            </button>
+            <button type="button" onclick="switchVisitorTab('scan')" id="navTab-scan" class="flex flex-col items-center -mt-5">
+                <div class="w-12 h-12 rounded-2xl bg-accent text-white shadow-lg flex items-center justify-center text-xl border-4 border-white active:scale-95 transition">📷</div>
+                <span class="text-[10px] font-bold text-slate-600 mt-0.5">Quét Camera</span>
+            </button>
+            <button type="button" onclick="switchVisitorTab('artifacts')" id="navTab-artifacts" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl text-slate-500 font-semibold">
+                <span class="text-lg leading-none">🏛️</span>
+                <span class="text-[10px]">Hiện vật</span>
+            </button>
+        </nav>
+
+        <!-- =============================================================== -->
+        <!-- 5. CÁC MODAL (ĐĂNG NHẬP, USER CONSENT, AI CONFIRM, CHI TIẾT 3D) -->
+        <!-- =============================================================== -->
+        <div id="adminLoginModal" class="hidden absolute inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-5">
+            <div class="bg-white w-full max-w-xs rounded-3xl p-5 shadow-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-extrabold text-navy">🔐 Cổng Chủ sở hữu</h3>
+                    <button type="button" onclick="closeAdminLoginModal()" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                </div>
+                <p class="text-[11px] text-slate-500">Nhập mật khẩu quản trị để mở khóa chế độ quét AR &amp; chỉnh sửa dữ liệu.</p>
+                <input type="password" id="adminPasswordInput" placeholder="Nhập mật khẩu..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-navy">
+                <p id="adminLoginError" class="hidden text-[11px] font-bold text-red-600">Sai mật khẩu, vui lòng thử lại.</p>
+                <button type="button" onclick="submitAdminLogin()" class="w-full py-2.5 rounded-xl bg-navy text-white text-xs font-extrabold shadow active:scale-95">
+                    Mở khóa
+                </button>
+            </div>
+        </div>
+
+        <div id="aiConsentModal" class="hidden absolute inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-5">
+            <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
+                <h3 class="text-sm font-extrabold text-navy">🛡️ Xác nhận gửi ảnh tới dịch vụ AI</h3>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Ảnh hiện vật vừa chụp sẽ được gửi an toàn qua <strong>Netlify Function</strong> đến dịch vụ AI thị giác để nhận diện tên hiện vật và kiểm tra tủ kính. Ứng dụng không tự động gửi ảnh nếu bạn chưa đồng ý.
+                </p>
+                <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 cursor-pointer">
+                    <input type="checkbox" id="rememberAiConsentCheck" class="accent-navy rounded">
+                    <span>Ghi nhớ đồng ý trong phiên làm việc này</span>
+                </label>
+                <div class="flex gap-2 pt-1">
+                    <button type="button" onclick="resolveAiConsent(false)" class="flex-1 py-2.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Từ chối</button>
+                    <button type="button" onclick="resolveAiConsent(true)" class="flex-1 py-2.5 rounded-xl bg-navy text-white text-xs font-extrabold shadow">Đồng ý gửi ảnh</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="aiConfirmModal" class="hidden absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-white w-full max-w-sm max-h-[88dvh] overflow-y-auto rounded-3xl p-4 shadow-2xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-extrabold text-navy">🤖 Kết quả nhận diện AI</h3>
+                    <button type="button" onclick="closeAiConfirmModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
+                </div>
+
+                <div class="w-full h-36 rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
+                    <img id="aiPreviewImg" src="" alt="Ảnh hiện vật" class="w-full h-full object-cover">
+                </div>
+
+                <div id="aiLoadingBox" class="hidden py-4 text-center space-y-2">
+                    <div class="w-7 h-7 border-4 border-navy border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p class="text-xs font-bold text-navy">Đang phân tích hình ảnh qua Netlify Function...</p>
+                </div>
+
+                <div id="aiResultBox" class="hidden space-y-2.5">
+                    <div id="aiErrorNotice" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900"></div>
+
+                    <div id="aiQuestionCard" class="p-3 rounded-2xl bg-blue-50 border border-blue-200 space-y-1">
+                        <p id="aiQuestionTitle" class="text-xs font-extrabold text-navy"></p>
+                        <div class="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                            <span id="aiCategoryBadge" class="px-2 py-0.5 rounded-full bg-white text-navy border border-blue-200">Loại: --</span>
+                            <span id="aiConfidenceBadge" class="px-2 py-0.5 rounded-full bg-white text-emerald-700 border border-emerald-200">Độ tin cậy: --</span>
+                        </div>
+                        <p id="aiShortDescText" class="text-[11px] text-slate-700 pt-1"></p>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-600">Tên hiện vật (xác nhận hoặc nhập tên khác) *</label>
+                        <input type="text" id="aiConfirmNameInput" placeholder="Nhập tên hiện vật..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-navy">
+                    </div>
+
+                    <div id="aiDisplayCaseBox" class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] font-extrabold text-navy">🪟 Kiểm tra Tủ kính trưng bày</span>
+                            <span id="aiCaseBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Chưa rõ</span>
+                        </div>
+                        <p id="aiCaseReasonText" class="text-[10px] text-slate-600"></p>
+                        <label class="flex items-center gap-2 text-[11px] font-bold text-navy cursor-pointer pt-0.5">
+                            <input type="checkbox" id="aiHasDisplayCaseCheck" class="accent-navy rounded">
+                            <span>Xác nhận hiện vật này đang nằm trong Tủ kính</span>
+                        </label>
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" onclick="closeAiConfirmModal()" class="px-3.5 py-2.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold">Hủy</button>
+                        <button type="button" onclick="confirmAndSaveAiArtifact()" class="flex-1 py-2.5 rounded-xl bg-navgreen text-white text-xs font-extrabold shadow active:scale-95">
+                            ✓ Xác nhận &amp; Lưu lên Bản đồ 3D
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="artifactDetailModal" class="hidden absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-2 sm:p-4">
+            <div class="bg-white w-full max-h-[90dvh] rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+                <div class="p-3.5 bg-navy text-white flex items-center justify-between shrink-0">
+                    <div class="min-w-0">
+                        <h3 id="detailTitle" class="text-sm font-extrabold truncate">Tên hiện vật</h3>
+                        <p id="detailMeta" class="text-[10px] text-blue-200">Tầng 1 • Danh mục</p>
+                    </div>
+                    <button type="button" onclick="closeArtifactDetail()" class="w-8 h-8 rounded-xl bg-white/15 text-white font-bold text-xs">✕</button>
+                </div>
+                <div class="overflow-y-auto p-3.5 space-y-3">
+                    <div class="relative w-full h-44 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                        <div id="detail3dCanvas" class="w-full h-full"></div>
+                        <img id="detailOriginalImg" src="" alt="Ảnh hiện vật" class="hidden absolute inset-0 w-full h-full object-cover">
+                        <button type="button" id="toggleDetailViewBtn" onclick="toggleDetailImageOr3D()" class="hidden absolute bottom-2 right-2 px-2.5 py-1 rounded-lg bg-black/65 text-white text-[10px] font-bold">
+                            🖼️ Xem ảnh gốc
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button type="button" onclick="narrateCurrentDetail()" class="flex-1 py-2.5 rounded-xl bg-accent text-white text-xs font-extrabold shadow active:scale-95">
+                            🔊 Nghe thuyết minh AI
+                        </button>
+                        <button type="button" onclick="navigateToCurrentDetail()" class="px-4 py-2.5 rounded-xl bg-navgreen text-white text-xs font-extrabold shadow active:scale-95">
+                            🧭 Chỉ đường
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 text-xs">
+                        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <p class="text-[10px] font-extrabold text-navy uppercase">1. Đây là vật gì?</p>
+                            <p id="detailWhat" class="text-slate-700 mt-0.5 leading-relaxed"></p>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <p class="text-[10px] font-extrabold text-navy uppercase">2. Dùng làm gì?</p>
+                            <p id="detailUse" class="text-slate-700 mt-0.5 leading-relaxed"></p>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <p class="text-[10px] font-extrabold text-navy uppercase">3. Câu chuyện lịch sử</p>
+                            <p id="detailStory" class="text-slate-700 mt-0.5 leading-relaxed"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST THÔNG BÁO (THAY THẾ HOÀN TOÀN ALERT/CONFIRM) -->
+        <div id="toastBox" class="hidden absolute top-16 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-2xl bg-slate-900/95 text-white text-xs font-bold shadow-xl text-center max-w-[90%] pointer-events-none"></div>
+
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TOÀN BỘ LOGIC JAVASCRIPT SẠCH LỖI 100%                              -->
+    <!-- =================================================================== -->
+    <script>
+        /* =====================================================================
+         * 1. TRẠNG THÁI & DỮ LIỆU CỐT LÕI (TƯƠNG THÍCH NGƯỢC)
+         * ===================================================================== */
+        const STORAGE_KEYS = {
+            ARTIFACTS: 'btdn_artifacts_v2',
+            WALLS: 'btdn_scanned_walls_v2',
+            PATHS: 'btdn_scanned_paths_v2',
+            CASES: 'btdn_display_cases_v2'
+        };
+
+        const DEFAULT_ARTIFACTS = [
+            {
+                id: 'art-sung-than-cong',
+                name: 'Súng Thần Công Thành Điện Hải',
+                category: 'Vũ khí lịch sử',
+                icon: '💣',
+                floor: 2,
+                x: -3.2,
+                y: 0.6,
+                z: -2.0,
+                what: 'Khẩu súng thần công bằng đồng đúc thời nhà Nguyễn, đặt tại Thành Điện Hải.',
+                use: 'Dùng để phòng thủ cửa biển Đà Nẵng trong giai đoạn kháng chiến chống Pháp 1858.',
+                story: 'Từng sát cánh cùng danh tướng Nguyễn Tri Phương bảo vệ Đà Nẵng suốt những ngày đầu chống liên quân Pháp - Tây Ban Nha.',
+                imageDataUrl: null,
+                displayCaseId: null
+            },
+            {
+                id: 'art-trong-dong',
+                name: 'Trống Đồng Đông Sơn',
+                category: 'Khảo cổ học',
+                icon: '🥁',
+                floor: 1,
+                x: 2.8,
+                y: 0.5,
+                z: 1.8,
+                what: 'Chiếc trống đồng cổ có hoa văn mặt trời và chim Lạc tinh xảo.',
+                use: 'Sử dụng trong các nghi lễ cộng đồng, cầu mùa và hiệu lệnh thời cổ đại.',
+                story: 'Minh chứng cho trình độ luyện kim đỉnh cao và sự giao thoa văn hóa miền Trung từ hàng nghìn năm trước.',
+                imageDataUrl: null,
+                displayCaseId: null
+            },
+            {
+                id: 'art-binh-gom',
+                name: 'Bình Gốm Chăm Pa Cổ',
+                category: 'Gốm sứ cổ',
+                icon: '🏺',
+                floor: 1,
+                x: -2.4,
+                y: 0.5,
+                z: 2.6,
+                what: 'Bình gốm đất nung mang đường nét chạm khắc đặc trưng văn hóa Chăm Pa.',
+                use: 'Dùng đựng nước lễ trong các đền tháp và sinh hoạt quý tộc xưa.',
+                story: 'Được khai quật tại vùng ven sông Hàn, lưu giữ dấu ấn rực rỡ của vương quốc Chăm Pa.',
+                imageDataUrl: null,
+                displayCaseId: null
+            }
+        ];
+
+        let artifacts = [];
+        let scannedWalls = [];
+        let scannedPaths = [];
+        let displayCases = [];
+
+        let isAdminUnlocked = false;
+        let currentAppMode = 'visitor';
+        let currentVisitorTab = 'map';
+        let currentOwnerSubTab = 'scan';
+        let useScannedMapMode = false;
+        let currentFloorView = 'all';
+
+        let userPos = { x: 0, z: 4, floor: 1, heading: 0 };
+        let ownerPos = { x: 0, z: 0, floor: 1, heading: 0 };
+        let navTargetId = null;
+        let trackingMode = 'indoor';
+        let compassEnabled = false;
+        let lastNarratedArtifactId = null;
+
+        let aiConsentGrantedSession = false;
+        let pendingConsentResolve = null;
+        let pendingAiArtifactDraft = null;
+
+        let audioUnlocked = false;
+        let voiceEngine = 'cloud';
+        let currentAudioEl = null;
+
+        let currentDetailArtifact = null;
+        let detailShowingImage = false;
+        let detailScene, detailCamera, detailRenderer, detailMesh, detailAnimId;
+
+        /* =====================================================================
+         * 2. TOAST THÔNG BÁO AN TOÀN
+         * ===================================================================== */
+        let toastTimer = null;
+        function showToast(msg, duration = 2600) {
+            const box = document.getElementById('toastBox');
+            if (!box) return;
+            box.textContent = msg;
+            box.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => box.classList.add('hidden'), duration);
+        }
+
+        /* =====================================================================
+         * 3. LƯU & TẢI DỮ LIỆU (LOCALSTORAGE + INDEXEDDB CHO FILE .GLB)
+         * ===================================================================== */
+        function normalizeWallRecord(w) {
+            if (!w) return null;
+            if (w.start && w.end) {
+                const dx = w.end.x - w.start.x;
+                const dz = w.end.z - w.start.z;
+                const len = Math.max(0.2, Math.hypot(dx, dz));
+                const dirX = dx / len;
+                const dirZ = dz / len;
+                const h = Number(w.height) || 2.6;
+                const y0 = Number(w.start.y) || 0;
+                return {
+                    id: w.id || ('wall-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+                    start: { x: Number(w.start.x) || 0, y: y0, z: Number(w.start.z) || 0 },
+                    end: { x: Number(w.end.x) || 0, y: y0, z: Number(w.end.z) || 0 },
+                    length: Number(len.toFixed(3)),
+                    height: h,
+                    direction: { x: dirX, z: dirZ },
+                    normal: { x: -dirZ, z: dirX },
+                    angle: Math.atan2(dz, dx),
+                    vertices: w.vertices || [
+                        { x: w.start.x, y: y0, z: w.start.z },
+                        { x: w.end.x, y: y0, z: w.end.z },
+                        { x: w.end.x, y: y0 + h, z: w.end.z },
+                        { x: w.start.x, y: y0 + h, z: w.start.z }
+                    ],
+                    floor: Number(w.floor) || 1,
+                    source: w.source || 'manual',
+                    confidence: typeof w.confidence === 'number' ? w.confidence : 0.85,
+                    updatedAt: w.updatedAt || Date.now(),
+                    planeId: w.planeId || w.xrPlaneKey || null,
+                    xrPlaneKey: w.xrPlaneKey || w.planeId || null,
+                    uncertainJoint: Boolean(w.uncertainJoint),
+                    rawHistory: Array.isArray(w.rawHistory) ? w.rawHistory : [],
+                    label: w.label || ''
+                };
+            }
+            const cx = Number(w.x) || 0;
+            const cz = Number(w.z) || 0;
+            const len = Number(w.width || w.length) || 2.0;
+            const rot = Number(w.rotY || w.angle) || 0;
+            const half = len / 2;
+            const dx = Math.cos(rot) * half;
+            const dz = Math.sin(rot) * half;
+            return normalizeWallRecord({
+                id: w.id,
+                start: { x: cx - dx, y: 0, z: cz - dz },
+                end: { x: cx + dx, y: 0, z: cz + dz },
+                height: Number(w.height) || 2.6,
+                floor: Number(w.floor) || 1,
+                source: 'legacy',
+                confidence: 0.7,
+                updatedAt: w.updatedAt || Date.now(),
+                label: w.label || 'Tường cũ'
+            });
+        }
+
+        function loadAllLocalData() {
+            try {
+                const rawArt = localStorage.getItem(STORAGE_KEYS.ARTIFACTS);
+                artifacts = rawArt ? JSON.parse(rawArt) : JSON.parse(JSON.stringify(DEFAULT_ARTIFACTS));
+            } catch (e) {
+                artifacts = JSON.parse(JSON.stringify(DEFAULT_ARTIFACTS));
+            }
+            try {
+                const rawWalls = localStorage.getItem(STORAGE_KEYS.WALLS);
+                scannedWalls = rawWalls ? JSON.parse(rawWalls).map(normalizeWallRecord).filter(Boolean) : [];
+            } catch (e) {
+                scannedWalls = [];
+            }
+            try {
+                const rawPaths = localStorage.getItem(STORAGE_KEYS.PATHS);
+                scannedPaths = rawPaths ? JSON.parse(rawPaths) : [];
+            } catch (e) {
+                scannedPaths = [];
+            }
+            try {
+                const rawCases = localStorage.getItem(STORAGE_KEYS.CASES);
+                displayCases = rawCases ? JSON.parse(rawCases) : [];
+            } catch (e) {
+                displayCases = [];
+            }
+            if (scannedWalls.length > 0) useScannedMapMode = true;
+        }
+
+        function saveArtifactsLocal() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.ARTIFACTS, JSON.stringify(artifacts));
+            } catch (e) {
+                showToast('Bộ nhớ trình duyệt đầy, hãy xuất JSON để sao lưu.');
+            }
+        }
+
+        function saveScannedMapLocal() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.WALLS, JSON.stringify(scannedWalls));
+                localStorage.setItem(STORAGE_KEYS.PATHS, JSON.stringify(scannedPaths));
+                localStorage.setItem(STORAGE_KEYS.CASES, JSON.stringify(displayCases));
+            } catch (e) {
+                showToast('Không thể lưu bản đồ vào bộ nhớ cục bộ.');
+            }
+        }
+
+        // IndexedDB lưu file .glb lớn
+        const IDB_NAME = 'btdn_3d_models_db';
+        const IDB_STORE = 'models';
+        function openModelDB() {
+            return new Promise((resolve, reject) => {
+                if (!('indexedDB' in window)) return reject(new Error('Không hỗ trợ IndexedDB'));
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = () => {
+                    if (!req.result.objectStoreNames.contains(IDB_STORE)) {
+                        req.result.createObjectStore(IDB_STORE);
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function saveGlbToIndexedDB(arrayBuffer, fileName) {
+            try {
+                const db = await openModelDB();
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put({ buffer: arrayBuffer, name: fileName }, 'museum_space_glb');
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function loadGlbFromIndexedDB() {
+            try {
+                const db = await openModelDB();
+                return await new Promise((resolve) => {
+                    const tx = db.transaction(IDB_STORE, 'readonly');
+                    const req = tx.objectStore(IDB_STORE).get('museum_space_glb');
+                    req.onsuccess = () => resolve(req.result || null);
+                    req.onerror = () => resolve(null);
+                });
+            } catch (e) {
+                return null;
+            }
+        }
+
+        async function clearSavedGlbModel() {
+            try {
+                const db = await openModelDB();
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).delete('museum_space_glb');
+            } catch (e) {}
+            if (customGlbGroup) customGlbGroup.clear();
+            const statusEl = document.getElementById('glbStatusText');
+            if (statusEl) statusEl.textContent = 'Đã xóa mô hình .glb.';
+            showToast('Đã xóa mô hình không gian 3D.');
+        }
+
+        function handleGlbUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+                const buffer = reader.result;
+                await saveGlbToIndexedDB(buffer, file.name);
+                loadGlbBufferIntoScene(buffer, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = '';
+        }
+
+        function loadGlbBufferIntoScene(buffer, fileName) {
+            if (!window.THREE || !THREE.GLTFLoader || !customGlbGroup) return;
+            try {
+                const loader = new THREE.GLTFLoader();
+                loader.parse(buffer, '', (gltf) => {
+                    customGlbGroup.clear();
+                    customGlbGroup.add(gltf.scene);
+                    const statusEl = document.getElementById('glbStatusText');
+                    if (statusEl) statusEl.textContent = `Đã nạp mô hình 3D: ${fileName}`;
+                    showToast(`Đã nạp mô hình 3D "${fileName}".`);
+                }, () => {
+                    showToast('Không thể đọc file .GLB này.');
+                });
+            } catch (e) {
+                showToast('Lỗi nạp mô hình 3D.');
+            }
+        }
+
+        /* =====================================================================
+         * 4. HỆ THỐNG GHÉP NỐI TƯỜNG CHÍNH XÁC (SIẾT NGƯỠNG 6 ĐỘ)
+         * ===================================================================== */
+        const WALL_MERGE_ANGLE_RAD = (6 * Math.PI) / 180;
+        const WALL_MERGE_PERP_DIST = 0.14;
+        const WALL_MERGE_ENDPOINT_GAP = 0.25;
+        const WALL_CORNER_SNAP_DIST = 0.18;
+
+        function angleDiffModPi(a, b) {
+            let d = Math.abs(a - b) % Math.PI;
+            return d > Math.PI / 2 ? Math.PI - d : d;
+        }
+
+        function pointToLinePerpDist(px, pz, wall) {
+            const vx = px - wall.start.x;
+            const vz = pz - wall.start.z;
+            return Math.abs(vx * wall.normal.x + vz * wall.normal.z);
+        }
+
+        function projectPointOnWallAxis(px, pz, wall) {
+            return (px - wall.start.x) * wall.direction.x + (pz - wall.start.z) * wall.direction.z;
+        }
+
+        function upsertWallWithGeometryEngine(rawSegment) {
+            const candidate = normalizeWallRecord(rawSegment);
+            if (!candidate || candidate.length < 0.25) return { status: 'ignored', wall: null };
+
+            // 1. Ưu tiên planeId
+            if (candidate.planeId) {
+                const existingIdx = scannedWalls.findIndex(w => (w.planeId || w.xrPlaneKey) === candidate.planeId && w.floor === candidate.floor);
+                if (existingIdx !== -1) {
+                    const prev = scannedWalls[existingIdx];
+                    if (candidate.confidence >= (prev.confidence || 0) || candidate.length > prev.length) {
+                        const history = Array.isArray(prev.rawHistory) ? prev.rawHistory.slice(-10) : [];
+                        history.push({ start: prev.start, end: prev.end, length: prev.length, updatedAt: prev.updatedAt });
+                        candidate.id = prev.id;
+                        candidate.rawHistory = history;
+                        scannedWalls[existingIdx] = candidate;
+                        snapCornersForWall(candidate);
+                        saveScannedMapLocal();
+                        return { status: 'updated', wall: candidate };
+                    }
+                    return { status: 'kept', wall: prev };
+                }
+            }
+
+            // 2. Ghép đồng phẳng (góc <= 6 độ, lệch vuông góc <= 0.14m, hở đầu mút <= 0.25m)
+            for (let i = 0; i < scannedWalls.length; i++) {
+                const w = scannedWalls[i];
+                if (w.floor !== candidate.floor) continue;
+                const angDiff = angleDiffModPi(w.angle, candidate.angle);
+                if (angDiff <= WALL_MERGE_ANGLE_RAD) {
+                    const dStart = pointToLinePerpDist(candidate.start.x, candidate.start.z, w);
+                    const dEnd = pointToLinePerpDist(candidate.end.x, candidate.end.z, w);
+                    if (dStart <= WALL_MERGE_PERP_DIST && dEnd <= WALL_MERGE_PERP_DIST) {
+                        const t1 = projectPointOnWallAxis(candidate.start.x, candidate.start.z, w);
+                        const t2 = projectPointOnWallAxis(candidate.end.x, candidate.end.z, w);
+                        const cMin = Math.min(t1, t2);
+                        const cMax = Math.max(t1, t2);
+                        const gap = Math.max(0, cMin - w.length, -cMax);
+                        if (gap <= WALL_MERGE_ENDPOINT_GAP) {
+                            const newMin = Math.min(0, cMin);
+                            const newMax = Math.max(w.length, cMax);
+                            const mergedStart = {
+                                x: w.start.x + w.direction.x * newMin,
+                                y: Math.min(w.start.y, candidate.start.y),
+                                z: w.start.z + w.direction.z * newMin
+                            };
+                            const mergedEnd = {
+                                x: w.start.x + w.direction.x * newMax,
+                                y: Math.min(w.end.y, candidate.end.y),
+                                z: w.start.z + w.direction.z * newMax
+                            };
+                            const history = Array.isArray(w.rawHistory) ? w.rawHistory.slice(-10) : [{ start: w.start, end: w.end, length: w.length }];
+                            history.push({ start: candidate.start, end: candidate.end, length: candidate.length });
+
+                            const merged = normalizeWallRecord({
+                                id: w.id,
+                                start: mergedStart,
+                                end: mergedEnd,
+                                height: Math.max(w.height, candidate.height),
+                                floor: w.floor,
+                                source: candidate.source === 'webxr_measured' ? 'webxr_measured' : w.source,
+                                confidence: Math.max(w.confidence, candidate.confidence),
+                                updatedAt: Date.now(),
+                                planeId: w.planeId || candidate.planeId,
+                                label: w.label || candidate.label,
+                                uncertainJoint: gap > 0.12,
+                                rawHistory: history
+                            });
+                            scannedWalls[i] = merged;
+                            snapCornersForWall(merged);
+                            saveScannedMapLocal();
+                            return { status: merged.uncertainJoint ? 'merged_uncertain' : 'merged', wall: merged };
+                        }
+                    }
+                }
+            }
+
+            // 3. Khác hướng: chỉ bắt dính góc chữ L / chữ T
+            snapCornersForWall(candidate);
+            scannedWalls.push(candidate);
+            saveScannedMapLocal();
+            return { status: 'added', wall: candidate };
+        }
+
+        function snapCornersForWall(targetWall) {
+            for (const other of scannedWalls) {
+                if (other.id === targetWall.id || other.floor !== targetWall.floor) continue;
+                if (angleDiffModPi(targetWall.angle, other.angle) < WALL_MERGE_ANGLE_RAD) continue;
+
+                const endpoints = [targetWall.start, targetWall.end];
+                const otherPts = [other.start, other.end];
+                for (const ep of endpoints) {
+                    let snapped = false;
+                    for (const op of otherPts) {
+                        const dist = Math.hypot(ep.x - op.x, ep.z - op.z);
+                        if (dist > 0.01 && dist <= WALL_CORNER_SNAP_DIST) {
+                            ep.x = op.x;
+                            ep.z = op.z;
+                            snapped = true;
+                            break;
+                        }
+                    }
+                    if (!snapped) {
+                        const perp = pointToLinePerpDist(ep.x, ep.z, other);
+                        const proj = projectPointOnWallAxis(ep.x, ep.z, other);
+                        if (perp > 0.01 && perp <= WALL_CORNER_SNAP_DIST && proj >= 0 && proj <= other.length) {
+                            ep.x = other.start.x + other.direction.x * proj;
+                            ep.z = other.start.z + other.direction.z * proj;
+                        }
+                    }
+                }
+            }
+            Object.assign(targetWall, normalizeWallRecord(targetWall));
+        }
+
+        /* =====================================================================
+         * 5. WEBXR AR (VIEWER POSE, HIT TEST, PCA 2D & HIỆU CHỈNH TỌA ĐỘ CHUNG)
+         * ===================================================================== */
+        let xrCapabilities = { checked: false, immersiveAR: false, hitTest: false, planeDetection: false, reason: '' };
+        let xrSession = null;
+        let xrRefSpace = null;
+        let xrViewerSpace = null;
+        let xrHitTestSource = null;
+        let xrPlaneStability = new Map();
+        let xrLastCameraPos = null;
+        let xrLastCameraYaw = 0;
+
+        let arCalibration = { calibrated: false, originMapX: 0, originMapZ: 0, originArX: 0, originArZ: 0, yawOffset: 0 };
+        try {
+            const savedCal = localStorage.getItem('btdn_ar_calibration');
+            if (savedCal) arCalibration = JSON.parse(savedCal);
+        } catch (e) {}
+
+        function updateCalibrationStatusUI() {
+            const el = document.getElementById('arCalibrationStatus');
+            if (!el) return;
+            if (arCalibration.calibrated) {
+                el.className = 'p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-900';
+                el.textContent = `✅ Đã hiệu chỉnh điểm gốc AR (${arCalibration.originMapX.toFixed(1)}m, ${arCalibration.originMapZ.toFixed(1)}m).`;
+            } else {
+                el.className = 'p-2 rounded-xl bg-amber-50/80 border border-amber-200 text-[10px] font-semibold text-amber-900';
+                el.textContent = '⚠️ Chưa hiệu chỉnh điểm gốc AR với bản đồ bảo tàng. Vị trí thực tế chưa được khóa.';
+            }
+        }
+
+        function calibrateAROrigin(mapX = ownerPos.x, mapZ = ownerPos.z, mapHeadingDeg = ownerPos.heading) {
+            if (!xrLastCameraPos) {
+                showToast('Hãy bật Quét AR WebXR và chờ có tín hiệu vị trí trước khi hiệu chỉnh.');
+                return false;
+            }
+            const mapRad = (mapHeadingDeg * Math.PI) / 180;
+            arCalibration = {
+                calibrated: true,
+                originMapX: Number(mapX) || 0,
+                originMapZ: Number(mapZ) || 0,
+                originArX: xrLastCameraPos.x,
+                originArZ: xrLastCameraPos.z,
+                yawOffset: mapRad - xrLastCameraYaw
+            };
+            try { localStorage.setItem('btdn_ar_calibration', JSON.stringify(arCalibration)); } catch (e) {}
+            updateCalibrationStatusUI();
+            showToast('Đã hiệu chỉnh điểm gốc AR khớp với bản đồ bảo tàng.');
+            return true;
+        }
+
+        function calibrateAROriginFromUI() {
+            calibrateAROrigin(ownerPos.x, ownerPos.z, ownerPos.heading);
+        }
+
+        function arToMapPoint(arX, arZ) {
+            if (!arCalibration.calibrated) return { x: arX, z: arZ };
+            const dx = arX - arCalibration.originArX;
+            const dz = arZ - arCalibration.originArZ;
+            const cos = Math.cos(arCalibration.yawOffset);
+            const sin = Math.sin(arCalibration.yawOffset);
+            return {
+                x: arCalibration.originMapX + (dx * cos - dz * sin),
+                z: arCalibration.originMapZ + (dx * sin + dz * cos)
+            };
+        }
+
+        function analyzeWallPolygon(plane, poseMatrix) {
+            const mat = new THREE.Matrix4().fromArray(poseMatrix);
+            const worldPts = [];
+            for (const pt of plane.polygon) {
+                worldPts.push(new THREE.Vector3(pt.x, pt.y, pt.z).applyMatrix4(mat));
+            }
+            if (worldPts.length < 3) return null;
+
+            let meanX = 0, meanZ = 0, minY = Infinity, maxY = -Infinity;
+            worldPts.forEach(p => {
+                meanX += p.x; meanZ += p.z;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+            });
+            meanX /= worldPts.length;
+            meanZ /= worldPts.length;
+
+            let cxx = 0, czz = 0, cxz = 0;
+            worldPts.forEach(p => {
+                const dx = p.x - meanX, dz = p.z - meanZ;
+                cxx += dx * dx; czz += dz * dz; cxz += dx * dz;
+            });
+            const pcaAngle = 0.5 * Math.atan2(2 * cxz, cxx - czz);
+            const dirX = Math.cos(pcaAngle), dirZ = Math.sin(pcaAngle);
+
+            let minProj = Infinity, maxProj = -Infinity;
+            worldPts.forEach(p => {
+                const proj = (p.x - meanX) * dirX + (p.z - meanZ) * dirZ;
+                if (proj < minProj) minProj = proj;
+                if (proj > maxProj) maxProj = proj;
+            });
+
+            const length = maxProj - minProj;
+            const height = Math.max(0.5, Math.min(4.5, maxY - minY || 2.6));
+            if (length < 0.35) return null;
+
+            const startMap = arToMapPoint(meanX + dirX * minProj, meanZ + dirZ * minProj);
+            const endMap = arToMapPoint(meanX + dirX * maxProj, meanZ + dirZ * maxProj);
+
+            return {
+                start: { x: startMap.x, y: 0, z: startMap.z },
+                end: { x: endMap.x, y: 0, z: endMap.z },
+                length: Number(length.toFixed(2)),
+                height: Number(height.toFixed(2)),
+                angle: Math.atan2(endMap.z - startMap.z, endMap.x - startMap.x),
+                vertices: worldPts.map(p => ({ x: Number(p.x.toFixed(3)), y: Number(p.y.toFixed(3)), z: Number(p.z.toFixed(3)) })),
+                confidence: Math.min(0.95, 0.55 + worldPts.length * 0.04)
+            };
+        }
+
+        function updateWebXRButtonUI(active) {
+            const btn = document.getElementById('webxrToggleBtn');
+            if (!btn) return;
+            if (active) {
+                btn.textContent = '⏹ Dừng Quét AR WebXR';
+                btn.className = 'flex-1 py-2.5 px-3 rounded-xl bg-red-600 text-white text-xs font-extrabold shadow active:scale-95 transition';
+            } else if (xrCapabilities.immersiveAR) {
+                btn.textContent = '🚀 Bật Quét AR WebXR';
+                btn.className = 'flex-1 py-2.5 px-3 rounded-xl bg-navy text-white text-xs font-extrabold shadow active:scale-95 transition';
+            }
+        }
+
+        async function stopWebXRScan() {
+            if (xrSession) {
+                try { await xrSession.end(); } catch (e) {}
+                xrSession = null;
+            }
+            xrRefSpace = null;
+            xrHitTestSource = null;
+            updateWebXRButtonUI(false);
+        }
+
+        async function checkWebXRCapabilities() {
+            const badge = document.getElementById('xrCompatBadge');
+            const text = document.getElementById('xrCompatText');
+            const notice = document.getElementById('xrFallbackNotice');
+            const btn = document.getElementById('webxrToggleBtn');
+
+            xrCapabilities = { checked: true, immersiveAR: false, hitTest: false, planeDetection: false, reason: '' };
+
+            if (!navigator.xr) {
+                xrCapabilities.reason = 'Trình duyệt không có WebXR API (không hỗ trợ immersive-ar, hit-test, plane-detection).';
+            } else {
+                try {
+                    xrCapabilities.immersiveAR = await navigator.xr.isSessionSupported('immersive-ar');
+                    xrCapabilities.reason = xrCapabilities.immersiveAR
+                        ? 'Hỗ trợ immersive-ar (hit-test & plane-detection sẽ được xác nhận khi mở phiên AR).'
+                        : 'Thiết bị không hỗ trợ immersive-ar.';
+                } catch (err) {
+                    xrCapabilities.reason = 'Lỗi kiểm tra WebXR: ' + err.message;
+                }
+            }
+
+            if (badge && text && notice && btn) {
+                if (xrCapabilities.immersiveAR) {
+                    badge.textContent = 'WebXR AR';
+                    badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 shrink-0';
+                    text.textContent = xrCapabilities.reason;
+                    notice.classList.add('hidden');
+                    btn.disabled = false;
+                } else {
+                    badge.textContent = 'Thủ công';
+                    badge.className = 'px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0';
+                    text.textContent = xrCapabilities.reason;
+                    notice.classList.remove('hidden');
+                    btn.textContent = '⚠️ WebXR không khả dụng (Dùng Thủ công)';
+                    btn.className = 'flex-1 py-2.5 px-3 rounded-xl bg-slate-200 text-slate-600 text-xs font-extrabold';
+                }
+            }
+            updateCalibrationStatusUI();
+        }
+
+        async function toggleWebXRScan() {
+            if (xrSession) {
+                await stopWebXRScan();
+                return;
+            }
+            if (!xrCapabilities.immersiveAR) {
+                showToast('Thiết bị không hỗ trợ WebXR AR. Vui lòng dùng Chế độ Quét hỗ trợ thủ công.');
+                return;
+            }
+
+            const statusEl = document.getElementById('xrPlaneStatusText');
+            try {
+                await CameraManager.stop();
+                xrSession = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['local'],
+                    optionalFeatures: ['plane-detection', 'hit-test', 'anchors', 'dom-overlay'],
+                    domOverlay: { root: document.getElementById('appShell') }
+                });
+                xrPlaneStability.clear();
+
+                const enabledFeatures = xrSession.enabledFeatures ? Array.from(xrSession.enabledFeatures) : [];
+                xrCapabilities.hitTest = enabledFeatures.includes('hit-test');
+                xrCapabilities.planeDetection = enabledFeatures.includes('plane-detection');
+
+                if (!xrCapabilities.planeDetection) {
+                    document.getElementById('xrFallbackNotice').classList.remove('hidden');
+                    showToast('Trình duyệt không hỗ trợ plane-detection.');
+                }
+
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl', { xrCompatible: true });
+                await gl.makeXRCompatible();
+                xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
+                xrRefSpace = await xrSession.requestReferenceSpace('local');
+                xrViewerSpace = await xrSession.requestReferenceSpace('viewer');
+
+                if (xrCapabilities.hitTest && xrSession.requestHitTestSource) {
+                    try { xrHitTestSource = await xrSession.requestHitTestSource({ space: xrViewerSpace }); } catch (e) {}
+                }
+
+                xrSession.addEventListener('end', () => {
+                    xrSession = null;
+                    xrRefSpace = null;
+                    xrHitTestSource = null;
+                    updateWebXRButtonUI(false);
+                    if (statusEl) statusEl.textContent = 'Trạng thái: Đã kết thúc phiên WebXR AR.';
+                });
+
+                updateWebXRButtonUI(true);
+                if (statusEl) statusEl.textContent = `AR đã bật (HitTest: ${xrCapabilities.hitTest ? 'Có' : 'Không'} • Plane: ${xrCapabilities.planeDetection ? 'Có' : 'Không'}).`;
+                xrSession.requestAnimationFrame(onXRFrame);
+            } catch (err) {
+                xrSession = null;
+                document.getElementById('xrFallbackNotice').classList.remove('hidden');
+                if (statusEl) statusEl.textContent = 'Lỗi mở phiên WebXR AR: Chuyển sang chế độ thủ công.';
+                showToast('Không thể khởi động WebXR AR: ' + (err.message || 'Không hỗ trợ'));
+            }
+        }
+
+        function onXRFrame(time, frame) {
+            if (!xrSession) return;
+            xrSession.requestAnimationFrame(onXRFrame);
+
+            const viewerPose = frame.getViewerPose(xrRefSpace);
+            if (!viewerPose) return;
+
+            const t = viewerPose.transform.position;
+            const q = viewerPose.transform.orientation;
+            xrLastCameraPos = new THREE.Vector3(t.x, t.y, t.z);
+            const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(q.x, q.y, q.z, q.w), 'YXZ');
+            xrLastCameraYaw = euler.y;
+
+            if (arCalibration.calibrated) {
+                const mapPos = arToMapPoint(t.x, t.z);
+                ownerPos.x = mapPos.x;
+                ownerPos.z = mapPos.z;
+                userPos.x = mapPos.x;
+                userPos.z = mapPos.z;
+                updateUserAvatar3D();
+            }
+
+            let distStatus = 'Chưa phát hiện mặt phẳng';
+            if (xrHitTestSource) {
+                const hits = frame.getHitTestResults(xrHitTestSource);
+                if (hits.length > 0) {
+                    const hitPose = hits[0].getPose(xrRefSpace);
+                    if (hitPose) {
+                        const hp = hitPose.transform.position;
+                        const dist = xrLastCameraPos.distanceTo(new THREE.Vector3(hp.x, hp.y, hp.z));
+                        document.getElementById('xrHitDistanceVal').textContent = dist.toFixed(2) + ' m';
+                        if (dist < 0.7) distStatus = `Camera đang ở gần tường (${dist.toFixed(2)} m)`;
+                        else if (dist <= 2.8) distStatus = `Khoảng cách phù hợp để quét (${dist.toFixed(2)} m)`;
+                        else distStatus = `Camera đang quá xa (${dist.toFixed(2)} m)`;
+                    }
+                }
+            }
+
+            const detected = frame.detectedPlanes;
+            let verticalCount = 0;
+            let lastMergeState = 'Đang quét...';
+
+            if (detected && detected.size > 0) {
+                if (distStatus === 'Chưa phát hiện mặt phẳng') distStatus = 'Đang phát hiện mặt phẳng';
+                detected.forEach((plane) => {
+                    if (plane.orientation !== 'vertical') return;
+                    verticalCount++;
+                    let rec = xrPlaneStability.get(plane);
+                    if (!rec) {
+                        rec = { key: 'xr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), frames: 0 };
+                        xrPlaneStability.set(plane, rec);
+                    }
+                    rec.frames++;
+                    if (rec.frames >= 4 && plane.polygon && plane.polygon.length >= 3) {
+                        const pose = frame.getPose(plane.planeSpace, xrRefSpace);
+                        if (!pose) return;
+                        const measured = analyzeWallPolygon(plane, pose.transform.matrix);
+                        if (measured) {
+                            const res = upsertWallWithGeometryEngine({
+                                ...measured,
+                                floor: ownerPos.floor,
+                                source: 'webxr_measured',
+                                planeId: rec.key,
+                                label: 'Tường AR WebXR'
+                            });
+                            const deg = Math.round((measured.angle * 180) / Math.PI);
+                            document.getElementById('xrLastWallMeasure').textContent =
+                                `${measured.length}m × ${measured.height}m (${deg}°, ~${Math.round(measured.confidence * 100)}%)`;
+                            if (res.status === 'merged') lastMergeState = 'Đã ghép đồng phẳng';
+                            else if (res.status === 'merged_uncertain') lastMergeState = 'Nối chưa chắc chắn';
+                            else if (res.status === 'added') lastMergeState = 'Đã thêm tường mới';
+                            else if (res.status === 'updated') lastMergeState = 'Đã cập nhật kích thước';
+                        }
+                    }
+                });
+            }
+
+            document.getElementById('xrPlaneCount').textContent = String(verticalCount);
+            document.getElementById('savedWallCount').textContent = String(scannedWalls.length);
+            document.getElementById('wallMergeStatus').textContent = lastMergeState;
+            document.getElementById('xrPlaneStatusText').textContent = `Trạng thái: ${distStatus}`;
+
+            renderVectorMiniMap();
+            renderScannedWallsList();
+            rebuildScannedMap3D();
+        }
+
+        /* =====================================================================
+         * 6. CHẾ ĐỘ QUÉT HỖ TRỢ THỦ CÔNG (PEDOMETER + ĐẶT ĐOẠN TƯỜNG THỦ CÔNG)
+         * ===================================================================== */
+        let isRecordingWalk = false;
+        let stepCount = 0;
+        let stepThreshold = 0.45;
+        let stepLengthMeters = 0.7;
+        let gravityBase = 9.81;
+        let lastStepTime = 0;
+
+        function updatePedometerSettings() {
+            stepThreshold = parseFloat(document.getElementById('stepSensitivitySelect').value) || 0.45;
+            stepLengthMeters = parseFloat(document.getElementById('stepLengthSelect').value) || 0.7;
+        }
+
+        function toggleWalkingRecord() {
+            isRecordingWalk = !isRecordingWalk;
+            const btn = document.getElementById('walkRecordBtn');
+            if (isRecordingWalk) {
+                btn.textContent = '⏸ Dừng ghi lối đi';
+                btn.className = 'flex-1 py-2 rounded-xl bg-red-600 text-white text-[11px] font-extrabold active:scale-95';
+                showToast('Đang ghi bước chân bằng Hand-held Pedometer.');
+            } else {
+                btn.textContent = '▶️ Ghi lối đi';
+                btn.className = 'flex-1 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-extrabold active:scale-95';
+            }
+        }
+
+        function handleDeviceMotion(e) {
+            if (!isRecordingWalk || currentAppMode !== 'owner' || xrSession) return;
+            const acc = e.accelerationIncludingGravity;
+            if (!acc) return;
+            const mag = Math.hypot(acc.x || 0, acc.y || 0, acc.z || 0);
+            gravityBase = 0.9 * gravityBase + 0.1 * mag;
+            const linear = Math.abs(mag - gravityBase);
+
+            const meter = document.getElementById('pedometerMeterBar');
+            const valEl = document.getElementById('pedometerAccelVal');
+            if (meter) meter.style.width = Math.min(100, (linear / 2.5) * 100) + '%';
+            if (valEl) valEl.textContent = linear.toFixed(2) + ' m/s²';
+
+            const now = Date.now();
+            if (linear > stepThreshold && now - lastStepTime > 320) {
+                lastStepTime = now;
+                ownerStepForward();
+            }
+        }
+
+        function ownerTurn(deg) {
+            ownerPos.heading = (ownerPos.heading + deg + 360) % 360;
+            const el = document.getElementById('ownerHeadingVal');
+            if (el) el.textContent = Math.round(ownerPos.heading) + '°';
+            renderVectorMiniMap();
+        }
+
+        function ownerStepForward() {
+            const rad = (ownerPos.heading * Math.PI) / 180;
+            ownerPos.x += Math.sin(rad) * stepLengthMeters;
+            ownerPos.z -= Math.cos(rad) * stepLengthMeters;
+            stepCount++;
+
+            const badge = document.getElementById('stepCountBadge');
+            if (badge) {
+                badge.textContent = stepCount + ' bước';
+                badge.classList.remove('step-pulse');
+                void badge.offsetWidth;
+                badge.classList.add('step-pulse');
+            }
+            if (navigator.vibrate) navigator.vibrate(25);
+
+            scannedPaths.push({ x: Number(ownerPos.x.toFixed(2)), z: Number(ownerPos.z.toFixed(2)), floor: ownerPos.floor });
+            saveScannedMapLocal();
+            renderVectorMiniMap();
+            rebuildScannedMap3D();
+        }
+
+        function addManualWallSegment(side) {
+            const rad = (ownerPos.heading * Math.PI) / 180;
+            const fwdX = Math.sin(rad);
+            const fwdZ = -Math.cos(rad);
+            const rightX = Math.cos(rad);
+            const rightZ = Math.sin(rad);
+
+            let cx = ownerPos.x, cz = ownerPos.z, wallDirX = rightX, wallDirZ = rightZ;
+            const dist = 1.4;
+            const halfLen = 1.0;
+
+            if (side === 'front') {
+                cx += fwdX * dist; cz += fwdZ * dist;
+            } else if (side === 'left') {
+                cx -= rightX * dist; cz -= rightZ * dist;
+                wallDirX = fwdX; wallDirZ = fwdZ;
+            } else if (side === 'right') {
+                cx += rightX * dist; cz += rightZ * dist;
+                wallDirX = fwdX; wallDirZ = fwdZ;
+            }
+
+            const res = upsertWallWithGeometryEngine({
+                start: { x: cx - wallDirX * halfLen, y: 0, z: cz - wallDirZ * halfLen },
+                end: { x: cx + wallDirX * halfLen, y: 0, z: cz + wallDirZ * halfLen },
+                height: 2.6,
+                floor: ownerPos.floor,
+                source: 'manual',
+                confidence: 0.9,
+                label: 'Tường thủ công (' + side + ')'
+            });
+
+            document.getElementById('savedWallCount').textContent = String(scannedWalls.length);
+            document.getElementById('wallMergeStatus').textContent =
+                res.status === 'merged' ? 'Đã ghép đồng phẳng' : 'Đã đặt & bắt góc';
+
+            renderVectorMiniMap();
+            renderScannedWallsList();
+            rebuildScannedMap3D();
+            showToast(res.status === 'merged' ? 'Đã ghép liền mạch vào bức tường liền kề.' : 'Đã thêm đoạn tường thủ công.');
+        }
+
+        function deleteScannedWall(id) {
+            scannedWalls = scannedWalls.filter(w => w.id !== id);
+            saveScannedMapLocal();
+            document.getElementById('savedWallCount').textContent = String(scannedWalls.length);
+            renderVectorMiniMap();
+            renderScannedWallsList();
+            rebuildScannedMap3D();
+            showToast('Đã xóa đoạn tường.');
+        }
+
+        function clearAllScannedWalls() {
+            scannedWalls = [];
+            scannedPaths = [];
+            saveScannedMapLocal();
+            document.getElementById('savedWallCount').textContent = '0';
+            renderVectorMiniMap();
+            renderScannedWallsList();
+            rebuildScannedMap3D();
+            showToast('Đã xóa toàn bộ tường & lối đi đã quét.');
+        }
+
+        function renderScannedWallsList() {
+            const box = document.getElementById('scannedWallsList');
+            if (!box) return;
+            if (scannedWalls.length === 0) {
+                box.innerHTML = '<p class="text-[11px] text-slate-400 text-center py-2">Chưa có đoạn tường nào được lưu.</p>';
+                return;
+            }
+            box.innerHTML = scannedWalls.map((w, idx) => `
+                <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px]">
+                    <div class="min-w-0">
+                        <p class="font-bold text-navy truncate">#${idx + 1} ${w.label || 'Đoạn tường'} (${w.source})</p>
+                        <p class="text-[10px] text-slate-500">Dài ${w.length.toFixed(2)}m • Cao ${w.height.toFixed(1)}m • Tầng ${w.floor}</p>
+                    </div>
+                    <button type="button" onclick="deleteScannedWall('${w.id}')" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px] shrink-0">Xóa</button>
+                </div>
+            `).join('');
+        }
+
+        /* =====================================================================
+         * 7. MINI-MAP VECTOR 2D (LƯỚI 0.25m & 1m, 12 px/m, ZOOM/PAN)
+         * ===================================================================== */
+        const miniMapView = { scale: 12, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
+
+        function zoomMiniMap(delta) {
+            miniMapView.scale = Math.max(6, Math.min(32, miniMapView.scale + delta));
+            renderVectorMiniMap();
+        }
+
+        function centerMiniMap() {
+            miniMapView.offsetX = 0;
+            miniMapView.offsetY = 0;
+            if (scannedWalls.length > 0) {
+                let sumX = 0, sumZ = 0;
+                scannedWalls.forEach(w => {
+                    sumX += (w.start.x + w.end.x) / 2;
+                    sumZ += (w.start.z + w.end.z) / 2;
+                });
+                miniMapView.offsetX = -(sumX / scannedWalls.length - ownerPos.x) * miniMapView.scale;
+                miniMapView.offsetY = -(sumZ / scannedWalls.length - ownerPos.z) * miniMapView.scale;
+            }
+            renderVectorMiniMap();
+        }
+
+        function initMiniMapPanEvents() {
+            const canvas = document.getElementById('vectorMiniMapCanvas');
+            if (!canvas || canvas.dataset.panBound) return;
+            canvas.dataset.panBound = '1';
+
+            const startDrag = (x, y) => { miniMapView.dragging = true; miniMapView.lastX = x; miniMapView.lastY = y; };
+            const moveDrag = (x, y) => {
+                if (!miniMapView.dragging) return;
+                miniMapView.offsetX += (x - miniMapView.lastX);
+                miniMapView.offsetY += (y - miniMapView.lastY);
+                miniMapView.lastX = x;
+                miniMapView.lastY = y;
+                renderVectorMiniMap();
+            };
+            const endDrag = () => { miniMapView.dragging = false; };
+
+            canvas.addEventListener('mousedown', e => startDrag(e.clientX, e.clientY));
+            window.addEventListener('mousemove', e => moveDrag(e.clientX, e.clientY));
+            window.addEventListener('mouseup', endDrag);
+            canvas.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            canvas.addEventListener('touchmove', e => {
+                if (e.touches.length === 1) moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            canvas.addEventListener('touchend', endDrag);
+        }
+
+        function renderVectorMiniMap() {
+            const canvas = document.getElementById('vectorMiniMapCanvas');
+            if (!canvas) return;
+            initMiniMapPanEvents();
+
+            const rect = canvas.getBoundingClientRect();
+            const w = Math.max(240, rect.width || 320);
+            const h = Math.max(160, rect.height || 208);
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, w, h);
+
+            const scale = miniMapView.scale;
+            const cx = w / 2 - ownerPos.x * scale + miniMapView.offsetX;
+            const cy = h / 2 - ownerPos.z * scale + miniMapView.offsetY;
+
+            // Lưới phụ 0.25m
+            const minorStep = 0.25 * scale;
+            if (minorStep >= 3) {
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+                ctx.lineWidth = 0.5;
+                for (let x = ((cx % minorStep) + minorStep) % minorStep; x < w; x += minorStep) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+                }
+                for (let y = ((cy % minorStep) + minorStep) % minorStep; y < h; y += minorStep) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+                }
+            }
+
+            // Lưới chính 1m
+            const majorStep = 1 * scale;
+            ctx.strokeStyle = 'rgba(100, 116, 139, 0.42)';
+            ctx.lineWidth = 1;
+            for (let x = ((cx % majorStep) + majorStep) % majorStep; x < w; x += majorStep) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = ((cy % majorStep) + majorStep) % majorStep; y < h; y += majorStep) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            // Lối đi
+            if (scannedPaths.length > 1) {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                scannedPaths.forEach((p, idx) => {
+                    const px = cx + p.x * scale;
+                    const py = cy + p.z * scale;
+                    if (idx === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                });
+                ctx.stroke();
+            }
+
+            // Tường 3D
+            scannedWalls.forEach(wall => {
+                const x1 = cx + wall.start.x * scale;
+                const y1 = cy + wall.start.z * scale;
+                const x2 = cx + wall.end.x * scale;
+                const y2 = cy + wall.end.z * scale;
+
+                ctx.lineWidth = 3.5;
+                ctx.lineCap = 'round';
+                if (wall.uncertainJoint) {
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.setLineDash([4, 3]);
+                } else if (wall.source === 'webxr_measured' || wall.source === 'webxr') {
+                    ctx.strokeStyle = '#0f766e';
+                    ctx.setLineDash([]);
+                } else {
+                    ctx.strokeStyle = '#2563eb';
+                    ctx.setLineDash([6, 2]);
+                }
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = wall.uncertainJoint ? '#f59e0b' : '#ea580c';
+                ctx.beginPath(); ctx.arc(x1, y1, 2.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x2, y2, 2.5, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // Tủ kính & Hiện vật
+            displayCases.forEach(dc => {
+                const dx = cx + dc.position.x * scale;
+                const dy = cy + dc.position.z * scale;
+                const rw = (dc.width || 1.0) * scale;
+                const rd = (dc.depth || 0.8) * scale;
+                ctx.fillStyle = 'rgba(14, 165, 233, 0.25)';
+                ctx.strokeStyle = '#0284c7';
+                ctx.lineWidth = 1.5;
+                ctx.fillRect(dx - rw / 2, dy - rd / 2, rw, rd);
+                ctx.strokeRect(dx - rw / 2, dy - rd / 2, rw, rd);
+            });
+
+            artifacts.forEach(art => {
+                const ax = cx + (art.x || 0) * scale;
+                const ay = cy + (art.z || 0) * scale;
+                ctx.fillStyle = '#ea580c';
+                ctx.beginPath(); ctx.arc(ax, ay, 3.5, 0, Math.PI * 2); ctx.fill();
+            });
+
+            // Biểu tượng người dùng
+            const ux = cx + ownerPos.x * scale;
+            const uy = cy + ownerPos.z * scale;
+            const rad = (ownerPos.heading * Math.PI) / 180;
+            ctx.save();
+            ctx.translate(ux, uy);
+            ctx.rotate(rad);
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(0, -8);
+            ctx.lineTo(5.5, 6);
+            ctx.lineTo(-5.5, 6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        /* =====================================================================
+         * 8. CAMERA MANAGER CHỐNG ĐEN CAMERA KHI CHUYỂN TAB
+         * ===================================================================== */
+        const CameraManager = {
+            stream: null,
+            activeVideoEl: null,
+            async stop() {
+                if (this.stream) {
+                    this.stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+                    this.stream = null;
+                }
+                if (this.activeVideoEl) {
+                    this.activeVideoEl.srcObject = null;
+                    this.activeVideoEl = null;
+                }
+            },
+            async start(videoEl) {
+                if (!videoEl || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+                await this.stop();
+                await new Promise(r => setTimeout(r, 180));
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+                        audio: false
+                    });
+                    this.stream = stream;
+                    this.activeVideoEl = videoEl;
+                    videoEl.srcObject = stream;
+                    await videoEl.play();
+                    const fb = document.getElementById('visitorCamFallback');
+                    if (fb) fb.classList.add('hidden');
+                    return true;
+                } catch (err) {
+                    const fb = document.getElementById('visitorCamFallback');
+                    if (fb && videoEl.id === 'visitorCameraVideo') fb.classList.remove('hidden');
+                    return false;
+                }
+            }
+        };
+
+        async function restartCurrentCamera() {
+            if (currentAppMode === 'visitor' && currentVisitorTab === 'scan') {
+                await CameraManager.start(document.getElementById('visitorCameraVideo'));
+            } else if (currentAppMode === 'owner' && currentOwnerSubTab === 'scan') {
+                await CameraManager.start(document.getElementById('ownerCameraVideo'));
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') restartCurrentCamera();
+            else CameraManager.stop();
+        });
+
+        /* =====================================================================
+         * 9. NHẬN DIỆN HIỆN VẬT & TỦ KÍNH QUA NETLIFY FUNCTION
+         * ===================================================================== */
+        function requestUserConsentForAI() {
+            if (aiConsentGrantedSession) return Promise.resolve(true);
+            return new Promise((resolve) => {
+                pendingConsentResolve = resolve;
+                document.getElementById('aiConsentModal').classList.remove('hidden');
+            });
+        }
+
+        function resolveAiConsent(accepted) {
+            document.getElementById('aiConsentModal').classList.add('hidden');
+            if (accepted && document.getElementById('rememberAiConsentCheck').checked) {
+                aiConsentGrantedSession = true;
+            }
+            if (pendingConsentResolve) {
+                const fn = pendingConsentResolve;
+                pendingConsentResolve = null;
+                fn(accepted);
+            }
+        }
+
+        function captureVideoFrameDataUrl(videoEl) {
+            if (!videoEl || !videoEl.videoWidth) return null;
+            const canvas = document.createElement('canvas');
+            const maxW = 1280;
+            const scale = Math.min(1, maxW / videoEl.videoWidth);
+            canvas.width = Math.round(videoEl.videoWidth * scale);
+            canvas.height = Math.round(videoEl.videoHeight * scale);
+            canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.85);
+        }
+
+        function compressUploadedImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const maxW = 1280;
+                        const scale = Math.min(1, maxW / img.width);
+                        canvas.width = Math.round(img.width * scale);
+                        canvas.height = Math.round(img.height * scale);
+                        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.85));
+                    };
+                    img.onerror = reject;
+                    img.src = reader.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleVisitorPhotoUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            try {
+                const dataUrl = await compressUploadedImage(file);
+                await openScannedPhotoArtifact(dataUrl);
+            } catch (e) {
+                showToast('Không thể đọc ảnh đã chọn.');
+            }
+            event.target.value = '';
+        }
+
+        async function handleOwnerPhotoUpload(event) {
+            await handleVisitorPhotoUpload(event);
+        }
+
+        async function captureAndRecognize() {
+            const dataUrl = captureVideoFrameDataUrl(document.getElementById('visitorCameraVideo'));
+            if (!dataUrl) {
+                showToast('Camera chưa sẵn sàng. Hãy bấm Bật lại Camera hoặc chọn ảnh.');
+                return;
+            }
+            await openScannedPhotoArtifact(dataUrl);
+        }
+
+        async function captureOwnerArtifactWithAI() {
+            const dataUrl = captureVideoFrameDataUrl(document.getElementById('ownerCameraVideo'));
+            if (!dataUrl) {
+                showToast('Camera chưa sẵn sàng. Hãy bấm Bật lại Cam hoặc tải ảnh.');
+                return;
+            }
+            await openScannedPhotoArtifact(dataUrl);
+        }
+
+        async function requestArtifactRecognition(dataUrl) {
+            if (!navigator.onLine) {
+                return { ok: false, reason: 'Mất kết nối mạng (Offline). Vui lòng nhập tên hiện vật thủ công.' };
+            }
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000);
+            try {
+                const mimeMatch = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+                const imageBase64 = dataUrl.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+
+                const resp = await fetch('/.netlify/functions/analyze-artifact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        imageBase64,
+                        mimeType,
+                        context: 'Bảo tàng Đà Nẵng - nhận diện vật dụng phổ thông, hiện vật lịch sử và tủ kính'
+                    }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+
+                if (resp.status === 404) return { ok: false, reason: 'HTTP 404: Chưa triển khai Netlify Function (/.netlify/functions/analyze-artifact).' };
+                if (resp.status === 401 || resp.status === 403) return { ok: false, reason: `HTTP ${resp.status}: Lỗi xác thực API key trên máy chủ.` };
+                if (resp.status === 429) return { ok: false, reason: 'HTTP 429: Dịch vụ AI đã hết hạn mức (Rate limit).' };
+                if (resp.status >= 500) return { ok: false, reason: `HTTP ${resp.status}: Lỗi máy chủ hoặc chưa cấu hình biến môi trường GEMINI_API_KEY.` };
+                if (!resp.ok) return { ok: false, reason: `HTTP ${resp.status}: Dịch vụ AI phản hồi lỗi không xác định.` };
+
+                let data;
+                try { data = await resp.json(); } catch { return { ok: false, reason: 'Lỗi dữ liệu: Máy chủ trả về JSON không hợp lệ.' }; }
+
+                if (!data || !data.name || !String(data.name).trim()) {
+                    return { ok: false, reason: 'AI không nhận diện được vật thể rõ ràng trong ảnh.' };
+                }
+                if (typeof data.confidence === 'number' && data.confidence < 0.45) {
+                    return { ok: true, lowConfidence: true, data, reason: `Độ tin cậy thấp (${Math.round(data.confidence * 100)}%). Vui lòng kiểm tra lại.` };
+                }
+                return { ok: true, data };
+            } catch (err) {
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') return { ok: false, reason: 'Timeout: Hết thời gian chờ phản hồi từ máy chủ AI.' };
+                return { ok: false, reason: 'Lỗi kết nối tới Netlify Function: ' + (err.message || 'Không rõ nguyên nhân') };
+            }
+        }
+
+        async function openScannedPhotoArtifact(dataUrl) {
+            const consented = await requestUserConsentForAI();
+            if (!consented) {
+                showToast('Đã hủy gửi ảnh theo yêu cầu của bạn.');
+                return;
+            }
+
+            document.getElementById('aiPreviewImg').src = dataUrl;
+            document.getElementById('aiLoadingBox').classList.remove('hidden');
+            document.getElementById('aiResultBox').classList.add('hidden');
+            document.getElementById('aiErrorNotice').classList.add('hidden');
+            document.getElementById('aiConfirmModal').classList.remove('hidden');
+
+            const basePos = currentAppMode === 'owner' ? ownerPos : userPos;
+            pendingAiArtifactDraft = {
+                imageDataUrl: dataUrl,
+                x: Number(basePos.x.toFixed(2)),
+                z: Number(basePos.z.toFixed(2)),
+                floor: basePos.floor || 1,
+                aiData: null
+            };
+
+            const res = await requestArtifactRecognition(dataUrl);
+            if (!res.ok) showAiManualFallback(res.reason);
+            else renderAiRecognitionResult(res.data, res.lowConfidence ? res.reason : null);
+        }
+
+        function showAiManualFallback(reasonText) {
+            document.getElementById('aiLoadingBox').classList.add('hidden');
+            document.getElementById('aiResultBox').classList.remove('hidden');
+
+            const errNotice = document.getElementById('aiErrorNotice');
+            errNotice.textContent = reasonText;
+            errNotice.classList.remove('hidden');
+
+            document.getElementById('aiQuestionTitle').textContent = 'AI chưa thể nhận diện tự động. Vui lòng nhập tên hiện vật:';
+            document.getElementById('aiCategoryBadge').textContent = 'Loại: Thủ công';
+            document.getElementById('aiConfidenceBadge').textContent = 'Độ tin cậy: --';
+            document.getElementById('aiShortDescText').textContent = 'Bạn có thể nhập tên thủ công và xác nhận xem vật thể có nằm trong tủ kính không.';
+            document.getElementById('aiConfirmNameInput').value = '';
+            document.getElementById('aiCaseBadge').textContent = 'Cần xác nhận';
+            document.getElementById('aiCaseReasonText').textContent = 'Tích chọn bên dưới nếu hiện vật đặt trong tủ kính.';
+            document.getElementById('aiHasDisplayCaseCheck').checked = false;
+        }
+
+        function renderAiRecognitionResult(data, warningMsg = null) {
+            document.getElementById('aiLoadingBox').classList.add('hidden');
+            document.getElementById('aiResultBox').classList.remove('hidden');
+
+            const errNotice = document.getElementById('aiErrorNotice');
+            if (warningMsg) {
+                errNotice.textContent = warningMsg;
+                errNotice.classList.remove('hidden');
+            } else {
+                errNotice.classList.add('hidden');
+            }
+
+            pendingAiArtifactDraft.aiData = data;
+            const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
+            const pct = Math.round(confidence * 100);
+            const hasReliableName = Boolean(data.name && data.name.trim() && confidence >= 0.45);
+
+            document.getElementById('aiCategoryBadge').textContent = 'Loại: ' + (data.category || 'Chưa rõ');
+            document.getElementById('aiConfidenceBadge').textContent = 'Độ tin cậy: ' + (pct > 0 ? pct + '%' : 'Thấp');
+            document.getElementById('aiShortDescText').textContent = data.shortDescription || 'Chưa có mô tả chi tiết từ AI.';
+
+            if (hasReliableName) {
+                document.getElementById('aiQuestionTitle').textContent = `Đây có phải là ${data.name} không?`;
+                document.getElementById('aiConfirmNameInput').value = data.name;
+            } else {
+                document.getElementById('aiQuestionTitle').textContent = 'AI không đủ chắc chắn. Vui lòng xác nhận hoặc nhập tên hiện vật:';
+                document.getElementById('aiConfirmNameInput').value = data.name || '';
+            }
+
+            const dc = data.displayCase || {};
+            const caseBadge = document.getElementById('aiCaseBadge');
+            const caseReason = document.getElementById('aiCaseReasonText');
+            const caseCheck = document.getElementById('aiHasDisplayCaseCheck');
+
+            if (dc.detected && !dc.needsConfirmation) {
+                caseBadge.textContent = 'Phát hiện Tủ kính';
+                caseBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800';
+                caseReason.textContent = dc.reason || 'AI phát hiện hiện vật nằm trong tủ kính trưng bày.';
+                caseCheck.checked = true;
+            } else if (dc.needsConfirmation) {
+                caseBadge.textContent = 'Cần xác nhận';
+                caseBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800';
+                caseReason.textContent = dc.reason || 'Ảnh chưa đủ rõ để phân biệt tủ kính với khung tranh/cửa kính. Vui lòng xác nhận.';
+                caseCheck.checked = false;
+            } else {
+                caseBadge.textContent = 'Không có tủ kính';
+                caseBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+                caseReason.textContent = dc.reason || 'Hiện vật đặt ngoài trời hoặc không nằm trong tủ kính.';
+                caseCheck.checked = false;
+            }
+        }
+
+        function closeAiConfirmModal() {
+            document.getElementById('aiConfirmModal').classList.add('hidden');
+            pendingAiArtifactDraft = null;
+        }
+
+        function confirmAndSaveAiArtifact() {
+            if (!pendingAiArtifactDraft) return;
+            const finalName = document.getElementById('aiConfirmNameInput').value.trim();
+            if (!finalName) {
+                showToast('Vui lòng nhập tên hiện vật trước khi lưu.');
+                return;
+            }
+
+            const ai = pendingAiArtifactDraft.aiData || {};
+            const hasDisplayCase = document.getElementById('aiHasDisplayCaseCheck').checked;
+            const newId = 'art-' + Date.now();
+            let linkedCaseId = null;
+
+            if (hasDisplayCase) {
+                linkedCaseId = upsertDisplayCaseForArtifact(
+                    newId,
+                    pendingAiArtifactDraft.x,
+                    pendingAiArtifactDraft.z,
+                    pendingAiArtifactDraft.floor,
+                    ai.displayCase || {}
+                );
+            }
+
+            const newArtifact = {
+                id: newId,
+                name: finalName,
+                category: ai.category || 'Hiện vật bảo tàng',
+                icon: hasDisplayCase ? '🪟' : '🏺',
+                floor: pendingAiArtifactDraft.floor,
+                x: pendingAiArtifactDraft.x,
+                y: 0.6,
+                z: pendingAiArtifactDraft.z,
+                what: ai.shortDescription || `Hiện vật "${finalName}" được lưu từ camera.`,
+                use: 'Hiện vật trưng bày phục vụ tham quan và nghiên cứu tại Bảo tàng Đà Nẵng.',
+                story: 'Được số hóa trực tiếp kèm ảnh gốc và vị trí trên bản đồ 3D.',
+                imageDataUrl: pendingAiArtifactDraft.imageDataUrl,
+                displayCaseId: linkedCaseId
+            };
+
+            artifacts.unshift(newArtifact);
+            saveArtifactsLocal();
+            saveScannedMapLocal();
+
+            closeAiConfirmModal();
+            refreshAllUI();
+            showToast(`Đã lưu "${finalName}" lên bản đồ 3D${linkedCaseId ? ' (kèm Tủ kính 3D)' : ''}.`);
+        }
+
+        function upsertDisplayCaseForArtifact(artifactId, x, z, floor, caseMeta) {
+            for (const dc of displayCases) {
+                if (dc.floor !== floor) continue;
+                if (Math.hypot(dc.position.x - x, dc.position.z - z) < 1.2) {
+                    if (!dc.artifactIds.includes(artifactId)) dc.artifactIds.push(artifactId);
+                    dc.updatedAt = Date.now();
+                    return dc.id;
+                }
+            }
+            const newCase = {
+                id: 'case-' + Date.now(),
+                position: { x, y: 0, z },
+                width: Number(caseMeta.width) || 1.2,
+                height: Number(caseMeta.height) || 1.8,
+                depth: Number(caseMeta.depth) || 0.8,
+                angle: ((ownerPos.heading || 0) * Math.PI) / 180,
+                floor,
+                artifactIds: [artifactId],
+                label: caseMeta.type || 'Tủ kính trưng bày',
+                updatedAt: Date.now()
+            };
+            displayCases.push(newCase);
+            return newCase.id;
+        }
+
+        /* =====================================================================
+         * 10. BẢN ĐỒ 3D (THREE.JS r128) & NHÂN VẬT HƯỚNG DẪN VIÊN 3D NAM / NỮ
+         * ===================================================================== */
+        let scene, camera, renderer, controls;
+        let sampleModelGroup, scannedMapGroup, customGlbGroup, pinsGroup, navLineMesh, userAvatarMesh;
+        let userAvatarGender = 'female';
+        try { userAvatarGender = localStorage.getItem('btdn_avatar_gender') || 'female'; } catch (e) {}
+        let avatarLimbs = null;
+        let avatarWalkPhase = 0;
+        let lastAvatarPos = new THREE.Vector3();
+        let lastAnimTime = performance.now();
+
+        function initMap3D() {
+            const container = document.getElementById('map3dCanvas');
+            if (!container || !window.THREE) return;
+            try {
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0xe2e8f0);
+
+                const w = Math.max(300, container.clientWidth || 360);
+                const h = Math.max(260, container.clientHeight || 420);
+                camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 120);
+                camera.position.set(0, 12, 13);
+
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                renderer.setSize(w, h);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                container.innerHTML = '';
+                container.appendChild(renderer.domElement);
+
+                if (THREE.OrbitControls) {
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.08;
+                    controls.maxPolarAngle = Math.PI / 2 - 0.06;
+                    controls.minDistance = 4;
+                    controls.maxDistance = 35;
+                }
+
+                scene.add(new THREE.AmbientLight(0xffffff, 0.78));
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+                dirLight.position.set(8, 16, 10);
+                scene.add(dirLight);
+
+                sampleModelGroup = new THREE.Group();
+                scannedMapGroup = new THREE.Group();
+                customGlbGroup = new THREE.Group();
+                pinsGroup = new THREE.Group();
+
+                scene.add(sampleModelGroup, scannedMapGroup, customGlbGroup, pinsGroup);
+
+                buildSampleMuseumModel();
+                rebuildScannedMap3D();
+                rebuildMapPins();
+                buildUserAvatar(userAvatarGender);
+
+                // Tải lại file .GLB nếu đã lưu trước đó trong IndexedDB
+                loadGlbFromIndexedDB().then(saved => {
+                    if (saved && saved.buffer) loadGlbBufferIntoScene(saved.buffer, saved.name || 'model.glb');
+                });
+
+                window.addEventListener('resize', resizeMap3D);
+                animateMap3D();
+            } catch (e) {
+                showToast('Thiết bị không hỗ trợ WebGL 3D.');
+            }
+        }
+
+        function toggleAvatarGender() {
+            const next = userAvatarGender === 'female' ? 'male' : 'female';
+            buildUserAvatar(next);
+            showToast(`Đã đổi nhân vật hướng dẫn viên sang ${next === 'female' ? 'Nữ' : 'Nam'}.`);
+        }
+
+        function updateAvatarGenderButtonUI() {
+            const btn = document.getElementById('avatarGenderBtn');
+            if (btn) btn.textContent = userAvatarGender === 'female' ? '👩 Nữ' : '👨 Nam';
+        }
+
+        function buildUserAvatar(gender = userAvatarGender) {
+            userAvatarGender = gender;
+            try { localStorage.setItem('btdn_avatar_gender', gender); } catch (e) {}
+            updateAvatarGenderButtonUI();
+
+            const prevPos = userAvatarMesh
+                ? userAvatarMesh.position.clone()
+                : new THREE.Vector3(userPos.x, (userPos.floor - 1) * 3.5, userPos.z);
+            const prevRotY = userAvatarMesh ? userAvatarMesh.rotation.y : 0;
+
+            if (userAvatarMesh && scene) scene.remove(userAvatarMesh);
+
+            const group = new THREE.Group();
+            const isFemale = gender === 'female';
+
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1c27d, roughness: 0.6 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x231f20, roughness: 0.8 });
+            const vestMat = new THREE.MeshStandardMaterial({ color: isFemale ? 0x0f766e : 0x1e3a8a, roughness: 0.5 });
+            const shirtMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7 });
+            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8 });
+            const badgeMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 });
+
+            // Tỷ lệ người thật ~1.65m (1 unit = 1m)
+            const legGeo = new THREE.BoxGeometry(0.14, 0.72, 0.16);
+            const leftLeg = new THREE.Mesh(legGeo, pantsMat);
+            leftLeg.position.set(-0.11, 0.36, 0);
+            const rightLeg = new THREE.Mesh(legGeo, pantsMat);
+            rightLeg.position.set(0.11, 0.36, 0);
+
+            const shoeGeo = new THREE.BoxGeometry(0.15, 0.08, 0.24);
+            const lShoe = new THREE.Mesh(shoeGeo, shoeMat); lShoe.position.set(0, -0.34, 0.04); leftLeg.add(lShoe);
+            const rShoe = new THREE.Mesh(shoeGeo, shoeMat); rShoe.position.set(0, -0.34, 0.04); rightLeg.add(rShoe);
+
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(isFemale ? 0.36 : 0.42, 0.52, 0.22), vestMat);
+            torso.position.set(0, 0.98, 0);
+
+            const collar = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.18, 0.23), shirtMat);
+            collar.position.set(0, 0.14, 0.005);
+            torso.add(collar);
+
+            const badge = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.02), badgeMat);
+            badge.position.set(0.1, 0.08, 0.12);
+            torso.add(badge);
+
+            if (isFemale) {
+                const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 0.28, 12), vestMat);
+                skirt.position.set(0, 0.68, 0);
+                group.add(skirt);
+            }
+
+            const armGeo = new THREE.BoxGeometry(0.11, 0.48, 0.12);
+            const leftArm = new THREE.Mesh(armGeo, vestMat);
+            leftArm.position.set(isFemale ? -0.24 : -0.28, 0.98, 0);
+            const rightArm = new THREE.Mesh(armGeo, vestMat);
+            rightArm.position.set(isFemale ? 0.24 : 0.28, 0.98, 0);
+
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14), skinMat);
+            head.position.set(0, 1.42, 0);
+
+            const hairTop = new THREE.Mesh(new THREE.SphereGeometry(0.168, 14, 14, 0, Math.PI * 2, 0, Math.PI * 0.55), hairMat);
+            hairTop.position.set(0, 0.02, -0.01);
+            head.add(hairTop);
+
+            if (isFemale) {
+                const bun = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), hairMat);
+                bun.position.set(0, 0.02, -0.18);
+                head.add(bun);
+            }
+
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(0.32, 0.42, 24),
+                new THREE.MeshBasicMaterial({ color: 0x0ea5e9, side: THREE.DoubleSide, transparent: true, opacity: 0.75 })
+            );
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = 0.02;
+
+            group.add(leftLeg, rightLeg, torso, leftArm, rightArm, head, ring);
+            group.position.copy(prevPos);
+            group.rotation.y = prevRotY;
+
+            avatarLimbs = { leftLeg, rightLeg, leftArm, rightArm, torso, head };
+            lastAvatarPos.copy(prevPos);
+            userAvatarMesh = group;
+
+            if (scene) scene.add(userAvatarMesh);
+            updateUserAvatar3D();
+        }
+
+        function updateUserAvatar3D() {
+            if (!userAvatarMesh) return;
+            const targetX = userPos.x;
+            const targetY = (userPos.floor - 1) * 3.5;
+            const targetZ = userPos.z;
+            const dx = targetX - userAvatarMesh.position.x;
+            const dz = targetZ - userAvatarMesh.position.z;
+            if (Math.hypot(dx, dz) > 0.01) {
+                userAvatarMesh.rotation.y = Math.atan2(dx, dz);
+            }
+            userAvatarMesh.position.set(targetX, targetY, targetZ);
+            updateNavigationLine();
+            checkProximityArtifact();
+        }
+
+        function updateUserAvatarAnimation(delta) {
+            if (!userAvatarMesh || !avatarLimbs) return;
+            const distMoved = userAvatarMesh.position.distanceTo(lastAvatarPos);
+            if (distMoved > 0.004) {
+                avatarWalkPhase += delta * 10;
+                const swing = Math.sin(avatarWalkPhase) * 0.55;
+                avatarLimbs.leftLeg.rotation.x = swing;
+                avatarLimbs.rightLeg.rotation.x = -swing;
+                avatarLimbs.leftArm.rotation.x = -swing * 0.75;
+                avatarLimbs.rightArm.rotation.x = swing * 0.75;
+                avatarLimbs.torso.position.y = 0.98 + Math.abs(Math.sin(avatarWalkPhase)) * 0.03;
+            } else {
+                avatarWalkPhase += delta * 2;
+                avatarLimbs.leftLeg.rotation.x *= 0.85;
+                avatarLimbs.rightLeg.rotation.x *= 0.85;
+                avatarLimbs.leftArm.rotation.x *= 0.85;
+                avatarLimbs.rightArm.rotation.x *= 0.85;
+                avatarLimbs.torso.position.y = 0.98 + Math.sin(avatarWalkPhase) * 0.01;
+            }
+            lastAvatarPos.copy(userAvatarMesh.position);
+        }
+
+        function buildSampleMuseumModel() {
+            sampleModelGroup.clear();
+            const f1 = new THREE.Mesh(
+                new THREE.BoxGeometry(12, 0.2, 10),
+                new THREE.MeshStandardMaterial({ color: 0xf8fafc })
+            );
+            f1.position.set(0, -0.1, 0);
+            sampleModelGroup.add(f1);
+
+            const grid1 = new THREE.GridHelper(12, 12, 0xcbd5e1, 0xe2e8f0);
+            grid1.position.y = 0.01;
+            sampleModelGroup.add(grid1);
+
+            const f2 = new THREE.Mesh(
+                new THREE.BoxGeometry(10, 0.18, 8),
+                new THREE.MeshStandardMaterial({ color: 0xf1f5f9, transparent: true, opacity: 0.85 })
+            );
+            f2.position.set(0, 3.4, -0.5);
+            sampleModelGroup.add(f2);
+        }
+
+        function rebuildScannedMap3D() {
+            if (!scannedMapGroup) return;
+            scannedMapGroup.clear();
+
+            scannedMapGroup.add(new THREE.GridHelper(24, 24, 0x94a3b8, 0xe2e8f0));
+
+            scannedPaths.forEach(p => {
+                const tile = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.75, 0.04, 0.75),
+                    new THREE.MeshStandardMaterial({ color: 0xbae6fd })
+                );
+                tile.position.set(p.x, (p.floor - 1) * 3.5 + 0.02, p.z);
+                scannedMapGroup.add(tile);
+            });
+
+            const wallMatXR = new THREE.MeshStandardMaterial({ color: 0xdcfce7, roughness: 0.7 });
+            const wallMatManual = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 });
+
+            scannedWalls.forEach(w => {
+                const cx = (w.start.x + w.end.x) / 2;
+                const cz = (w.start.z + w.end.z) / 2;
+                const yBase = (w.floor - 1) * 3.5;
+
+                const mesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(w.length, w.height, 0.16),
+                    (w.source === 'webxr_measured' || w.source === 'webxr') ? wallMatXR : wallMatManual
+                );
+                mesh.position.set(cx, yBase + w.height / 2, cz);
+                mesh.rotation.y = -w.angle;
+                scannedMapGroup.add(mesh);
+            });
+
+            displayCases.forEach(dc => {
+                const group = new THREE.Group();
+                const yBase = (dc.floor - 1) * 3.5;
+                const pedH = 0.7;
+                const glassH = Math.max(0.6, (dc.height || 1.8) - pedH);
+
+                const ped = new THREE.Mesh(
+                    new THREE.BoxGeometry(dc.width, pedH, dc.depth),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b })
+                );
+                ped.position.y = pedH / 2;
+                group.add(ped);
+
+                const glassGeo = new THREE.BoxGeometry(dc.width, glassH, dc.depth);
+                const glassMesh = new THREE.Mesh(
+                    glassGeo,
+                    new THREE.MeshStandardMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.32, roughness: 0.1 })
+                );
+                glassMesh.position.y = pedH + glassH / 2;
+                group.add(glassMesh);
+
+                const edges = new THREE.LineSegments(
+                    new THREE.EdgesGeometry(glassGeo),
+                    new THREE.LineBasicMaterial({ color: 0x0284c7 })
+                );
+                edges.position.copy(glassMesh.position);
+                group.add(edges);
+
+                group.position.set(dc.position.x, yBase, dc.position.z);
+                group.rotation.y = -(dc.angle || 0);
+                scannedMapGroup.add(group);
+            });
+
+            applyMapSourceVisibility();
+        }
+
+        function applyMapSourceVisibility() {
+            if (!sampleModelGroup || !scannedMapGroup) return;
+            sampleModelGroup.visible = !useScannedMapMode;
+            scannedMapGroup.visible = useScannedMapMode;
+            const badge = document.getElementById('mapSourceBadge');
+            if (badge) badge.textContent = useScannedMapMode ? 'Bản đồ đã quét' : 'Mô hình 2 tầng';
+        }
+
+        function toggleMapSourceMode() {
+            useScannedMapMode = !useScannedMapMode;
+            applyMapSourceVisibility();
+        }
+
+        function rebuildMapPins() {
+            if (!pinsGroup) return;
+            pinsGroup.clear();
+            artifacts.forEach(art => {
+                if (currentFloorView !== 'all' && String(art.floor) !== currentFloorView) return;
+                const yBase = (art.floor - 1) * 3.5;
+                const pin = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.28, 16, 16),
+                    new THREE.MeshStandardMaterial({ color: 0xea580c })
+                );
+                pin.position.set(art.x || 0, yBase + 0.9, art.z || 0);
+                pin.userData.artifactId = art.id;
+                pinsGroup.add(pin);
+            });
+        }
+
+        function zoomMap3D(delta) {
+            if (!camera || !controls) return;
+            const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+            camera.position.addScaledVector(dir, delta);
+        }
+
+        function setFloorView(f) {
+            currentFloorView = f;
+            ['2', '1', 'all'].forEach(k => {
+                const btn = document.getElementById('floorBtn-' + k);
+                if (!btn) return;
+                btn.className = k === f
+                    ? 'w-9 h-8 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm'
+                    : 'w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100';
+            });
+            rebuildMapPins();
+        }
+
+        function resizeMap3D() {
+            const container = document.getElementById('map3dCanvas');
+            if (!container || !renderer || !camera) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            if (w > 0 && h > 0) {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            }
+        }
+
+        function animateMap3D() {
+            requestAnimationFrame(animateMap3D);
+            const now = performance.now();
+            const delta = Math.min(0.1, (now - lastAnimTime) / 1000);
+            lastAnimTime = now;
+            updateUserAvatarAnimation(delta);
+            if (controls) controls.update();
+            if (renderer && scene && camera) renderer.render(scene, camera);
+        }
+
+        /* =====================================================================
+         * 11. DẪN ĐƯỜNG, DI CHUYỂN & TỰ ĐỘNG THUYẾT MINH (< 2.5m)
+         * ===================================================================== */
+        function moveUserStep(dx, dz) {
+            userPos.x += dx * 0.8;
+            userPos.z += dz * 0.8;
+            updateUserAvatar3D();
+        }
+
+        function toggleUserFloor() {
+            userPos.floor = userPos.floor === 1 ? 2 : 1;
+            document.getElementById('dpadFloorBtn').textContent = 'T' + userPos.floor;
+            updateUserAvatar3D();
+        }
+
+        function startNavigationTo(artifactId) {
+            navTargetId = artifactId;
+            switchVisitorTab('map');
+            updateNavigationLine();
+            const target = artifacts.find(a => a.id === artifactId);
+            if (target) speakVietnamese(`Bắt đầu dẫn đường tới ${target.name} ở tầng ${target.floor}.`);
+        }
+
+        function stopNavigation() {
+            navTargetId = null;
+            document.getElementById('navBanner').classList.add('hidden');
+            if (navLineMesh && scene) {
+                scene.remove(navLineMesh);
+                navLineMesh = null;
+            }
+        }
+
+        function updateNavigationLine() {
+            if (!navTargetId || !scene) return;
+            const target = artifacts.find(a => a.id === navTargetId);
+            if (!target) return;
+
+            const dist = Math.hypot((target.x || 0) - userPos.x, (target.z || 0) - userPos.z);
+            document.getElementById('navBanner').classList.remove('hidden');
+            document.getElementById('navDistBadge').textContent = dist.toFixed(1) + ' m';
+            document.getElementById('navFloorBadge').textContent = 'Tầng ' + target.floor;
+            document.getElementById('navTargetName').textContent = target.name;
+            document.getElementById('navInstruction').textContent =
+                dist < 1.5
+                    ? `Bạn đã đến nơi: ${target.name}.`
+                    : `Đi thẳng ${dist.toFixed(1)} mét về phía ${target.name}.`;
+
+            if (navLineMesh) scene.remove(navLineMesh);
+            const pts = [
+                new THREE.Vector3(userPos.x, (userPos.floor - 1) * 3.5 + 0.25, userPos.z),
+                new THREE.Vector3(target.x || 0, (target.floor - 1) * 3.5 + 0.25, target.z || 0)
+            ];
+            navLineMesh = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints(pts),
+                new THREE.LineBasicMaterial({ color: 0x16a34a, linewidth: 3 })
+            );
+            scene.add(navLineMesh);
+        }
+
+        function checkProximityArtifact() {
+            let nearest = null;
+            let minDist = Infinity;
+            for (const art of artifacts) {
+                if (art.floor !== userPos.floor) continue;
+                const d = Math.hypot((art.x || 0) - userPos.x, (art.z || 0) - userPos.z);
+                if (d < 2.5 && d < minDist) {
+                    minDist = d;
+                    nearest = art;
+                }
+            }
+            const card = document.getElementById('proximityCard');
+            if (nearest) {
+                document.getElementById('proxIcon').textContent = nearest.icon || '🏺';
+                document.getElementById('proxName').textContent = nearest.name;
+                document.getElementById('proxViewBtn').onclick = () => openArtifactDetail(nearest.id);
+                card.classList.remove('hidden');
+
+                if (document.getElementById('autoNarrateToggle').checked && lastNarratedArtifactId !== nearest.id) {
+                    lastNarratedArtifactId = nearest.id;
+                    speakVietnamese(`Bạn đang ở gần ${nearest.name}. ${nearest.what}`);
+                }
+            } else {
+                card.classList.add('hidden');
+            }
+        }
+
+        function hideProximityCard() {
+            document.getElementById('proximityCard').classList.add('hidden');
+        }
+
+        function setNavTrackingMode(mode) {
+            trackingMode = mode;
+            document.getElementById('trackBtn-gps').className = mode === 'gps'
+                ? 'flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm transition'
+                : 'flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition';
+            document.getElementById('trackBtn-indoor').className = mode === 'indoor'
+                ? 'flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm transition'
+                : 'flex-1 py-1.5 px-2 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition';
+            showToast(mode === 'gps' ? 'Đã bật chế độ GPS Thực tế.' : 'Đã chuyển sang chế độ Trong nhà (D-pad).');
+        }
+
+        function toggleCompass() {
+            compassEnabled = !compassEnabled;
+            showToast(compassEnabled ? 'Đã bật La bàn số.' : 'Đã tắt La bàn số.');
+        }
+
+        /* =====================================================================
+         * 12. GIỌNG ĐỌC AI 2 LỚP (CLOUD TTS + WEB SPEECH API)
+         * ===================================================================== */
+        function unlockAndTestAudio() {
+            audioUnlocked = true;
+            document.getElementById('audioBtnText').textContent = 'Đang bật';
+            speakVietnamese('Chào mừng bạn đến với Bảo tàng Đà Nẵng 3D.');
+        }
+
+        function toggleVoiceEngine() {
+            voiceEngine = voiceEngine === 'cloud' ? 'webspeech' : 'cloud';
+            document.getElementById('voiceEngineBtn').textContent = voiceEngine === 'cloud' ? '☁️ Giọng Cloud' : '📱 Giọng máy';
+        }
+
+        function stopSpeaking() {
+            if (currentAudioEl) {
+                try { currentAudioEl.pause(); } catch (e) {}
+                currentAudioEl = null;
+            }
+            if ('speechSynthesis' in window) {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+            }
+            document.getElementById('subtitleBar').classList.add('hidden');
+            document.getElementById('stopAudioBtn').classList.add('hidden');
+        }
+
+        function speakVietnamese(text) {
+            if (!text) return;
+            stopSpeaking();
+            document.getElementById('subtitleText').textContent = text;
+            document.getElementById('subtitleBar').classList.remove('hidden');
+            document.getElementById('stopAudioBtn').classList.remove('hidden');
+
+            if (voiceEngine === 'cloud') {
+                const shortText = text.slice(0, 180);
+                const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(shortText)}`;
+                const audio = new Audio(url);
+                currentAudioEl = audio;
+                audio.onended = () => stopSpeaking();
+                audio.onerror = () => speakWithWebSpeech(text);
+                audio.play().catch(() => speakWithWebSpeech(text));
+            } else {
+                speakWithWebSpeech(text);
+            }
+        }
+
+        function speakWithWebSpeech(text) {
+            if (!('speechSynthesis' in window)) return;
+            try {
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'vi-VN';
+                utter.onend = () => stopSpeaking();
+                window.speechSynthesis.speak(utter);
+            } catch (e) {}
+        }
+
+        /* =====================================================================
+         * 13. MODAL CHI TIẾT HIỆN VẬT 3D XOAY 360° & QUẢN LÝ
+         * ===================================================================== */
+        function initDetail3DPreview() {
+            const container = document.getElementById('detail3dCanvas');
+            if (!container || !window.THREE) return;
+            if (detailAnimId) cancelAnimationFrame(detailAnimId);
+            try {
+                detailScene = new THREE.Scene();
+                detailScene.background = new THREE.Color(0xf1f5f9);
+                const w = container.clientWidth || 320;
+                const h = container.clientHeight || 176;
+                detailCamera = new THREE.PerspectiveCamera(45, w / h, 0.1, 50);
+                detailCamera.position.set(0, 1.4, 3.2);
+                detailCamera.lookAt(0, 0.4, 0);
+
+                if (!detailRenderer) {
+                    detailRenderer = new THREE.WebGLRenderer({ antialias: true });
+                }
+                detailRenderer.setSize(w, h);
+                container.innerHTML = '';
+                container.appendChild(detailRenderer.domElement);
+
+                detailScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+                const dl = new THREE.DirectionalLight(0xffffff, 0.7);
+                dl.position.set(3, 5, 4);
+                detailScene.add(dl);
+
+                const group = new THREE.Group();
+                const base = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.75, 0.85, 0.25, 24),
+                    new THREE.MeshStandardMaterial({ color: 0x0f294a })
+                );
+                const body = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.65, 1),
+                    new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.35, metalness: 0.25 })
+                );
+                body.position.y = 0.75;
+                group.add(base, body);
+                detailMesh = group;
+                detailScene.add(detailMesh);
+
+                const loop = () => {
+                    detailAnimId = requestAnimationFrame(loop);
+                    if (detailMesh) detailMesh.rotation.y += 0.015;
+                    detailRenderer.render(detailScene, detailCamera);
+                };
+                loop();
+            } catch (e) {}
+        }
+
+        function openArtifactDetail(id) {
+            const art = artifacts.find(a => a.id === id);
+            if (!art) return;
+            currentDetailArtifact = art;
+            document.getElementById('detailTitle').textContent = art.name;
+            document.getElementById('detailMeta').textContent = `Tầng ${art.floor} • ${art.category || 'Hiện vật'}`;
+            document.getElementById('detailWhat').textContent = art.what || '';
+            document.getElementById('detailUse').textContent = art.use || '';
+            document.getElementById('detailStory').textContent = art.story || '';
+
+            const imgEl = document.getElementById('detailOriginalImg');
+            const toggleBtn = document.getElementById('toggleDetailViewBtn');
+            if (art.imageDataUrl) {
+                imgEl.src = art.imageDataUrl;
+                imgEl.classList.remove('hidden');
+                toggleBtn.classList.remove('hidden');
+                detailShowingImage = true;
+                toggleBtn.textContent = '🧊 Xem khung 3D';
+            } else {
+                imgEl.classList.add('hidden');
+                toggleBtn.classList.add('hidden');
+                detailShowingImage = false;
+            }
+            document.getElementById('artifactDetailModal').classList.remove('hidden');
+            setTimeout(initDetail3DPreview, 50);
+        }
+
+        function closeArtifactDetail() {
+            document.getElementById('artifactDetailModal').classList.add('hidden');
+            if (detailAnimId) cancelAnimationFrame(detailAnimId);
+        }
+
+        function toggleDetailImageOr3D() {
+            detailShowingImage = !detailShowingImage;
+            document.getElementById('detailOriginalImg').classList.toggle('hidden', !detailShowingImage);
+            document.getElementById('toggleDetailViewBtn').textContent = detailShowingImage ? '🧊 Xem khung 3D' : '🖼️ Xem ảnh gốc';
+        }
+
+        function narrateCurrentDetail() {
+            if (!currentDetailArtifact) return;
+            const a = currentDetailArtifact;
+            speakVietnamese(`${a.name}. ${a.what} ${a.use} ${a.story}`);
+        }
+
+        function navigateToCurrentDetail() {
+            if (!currentDetailArtifact) return;
+            closeArtifactDetail();
+            startNavigationTo(currentDetailArtifact.id);
+        }
+
+        function submitManualArtifact(e) {
+            e.preventDefault();
+            const newArt = {
+                id: 'art-' + Date.now(),
+                name: document.getElementById('artNameInput').value.trim(),
+                category: document.getElementById('artCategoryInput').value.trim() || 'Hiện vật',
+                icon: '🏺',
+                floor: Number(document.getElementById('artFloorInput').value) || 1,
+                x: Number(document.getElementById('artXInput').value) || 0,
+                y: 0.6,
+                z: Number(document.getElementById('artZInput').value) || 0,
+                what: document.getElementById('artWhatInput').value.trim() || 'Hiện vật trưng bày tại bảo tàng.',
+                use: document.getElementById('artUseInput').value.trim() || 'Phục vụ tham quan lịch sử.',
+                story: document.getElementById('artStoryInput').value.trim() || 'Được bổ sung bởi ban quản lý.',
+                imageDataUrl: null,
+                displayCaseId: null
+            };
+            artifacts.unshift(newArt);
+            saveArtifactsLocal();
+            e.target.reset();
+            refreshAllUI();
+            showToast('Đã lưu hiện vật mới lên Bản đồ 3D.');
+        }
+
+        function deleteArtifactById(id) {
+            artifacts = artifacts.filter(a => a.id !== id);
+            saveArtifactsLocal();
+            refreshAllUI();
+            showToast('Đã xóa hiện vật.');
+        }
+
+        function exportAllDataJSON() {
+            const payload = { version: 2, exportedAt: new Date().toISOString(), artifacts, scannedWalls, scannedPaths, displayCases };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bao_tang_da_nang_3d_data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Đã xuất file JSON sao lưu.');
+        }
+
+        function importAllDataJSON(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    if (Array.isArray(data.artifacts)) artifacts = data.artifacts;
+                    if (Array.isArray(data.scannedWalls)) scannedWalls = data.scannedWalls.map(normalizeWallRecord).filter(Boolean);
+                    if (Array.isArray(data.scannedPaths)) scannedPaths = data.scannedPaths;
+                    if (Array.isArray(data.displayCases)) displayCases = data.displayCases;
+                    saveArtifactsLocal();
+                    saveScannedMapLocal();
+                    refreshAllUI();
+                    showToast('Đã nhập dữ liệu JSON thành công.');
+                } catch (err) {
+                    showToast('File JSON không hợp lệ.');
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        /* =====================================================================
+         * 14. PHÂN QUYỀN CHỦ SỞ HỮU ẨN (5 LẦN CHẠM LOGO HOẶC ?admin=1)
+         * ===================================================================== */
+        let logoTapCount = 0;
+        let logoTapTimer = null;
+
+        function handleSecretLogoTap() {
+            if (isAdminUnlocked) return;
+            logoTapCount++;
+            clearTimeout(logoTapTimer);
+            logoTapTimer = setTimeout(() => { logoTapCount = 0; }, 3000);
+            if (logoTapCount >= 5) {
+                logoTapCount = 0;
+                openAdminLoginModal();
+            }
+        }
+
+        function openAdminLoginModal() {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminLoginError').classList.add('hidden');
+            document.getElementById('adminLoginModal').classList.remove('hidden');
+        }
+
+        function closeAdminLoginModal() {
+            document.getElementById('adminLoginModal').classList.add('hidden');
+        }
+
+        function submitAdminLogin() {
+            const pwd = document.getElementById('adminPasswordInput').value.trim();
+            if (pwd === 'nhom7') {
+                isAdminUnlocked = true;
+                closeAdminLoginModal();
+                document.getElementById('adminModeControls').classList.remove('hidden');
+                document.getElementById('adminModeControls').classList.add('flex');
+                switchAppMode('owner');
+                showToast('Đã mở khóa chế độ Chủ sở hữu.');
+            } else {
+                document.getElementById('adminLoginError').classList.remove('hidden');
+            }
+        }
+
+        function logoutAdmin() {
+            isAdminUnlocked = false;
+            stopWebXRScan();
+            document.getElementById('adminModeControls').classList.add('hidden');
+            document.getElementById('adminModeControls').classList.remove('flex');
+            switchAppMode('visitor');
+            showToast('Đã đăng xuất chế độ Chủ sở hữu.');
+        }
+
+        function switchAppMode(mode) {
+            currentAppMode = mode;
+            const vCont = document.getElementById('visitorContainer');
+            const oCont = document.getElementById('ownerContainer');
+            const bNav = document.getElementById('visitorBottomNav');
+
+            document.getElementById('modeBtn-visitor').className = mode === 'visitor'
+                ? 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-navy text-white shadow-sm transition'
+                : 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:text-navy transition';
+            document.getElementById('modeBtn-owner').className = mode === 'owner'
+                ? 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-navy text-white shadow-sm transition'
+                : 'px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-slate-600 hover:text-navy transition';
+
+            if (mode === 'owner') {
+                vCont.classList.add('hidden');
+                bNav.classList.add('hidden');
+                oCont.classList.remove('hidden');
+                oCont.classList.add('flex');
+                switchOwnerSubTab(currentOwnerSubTab);
+            } else {
+                oCont.classList.add('hidden');
+                oCont.classList.remove('flex');
+                vCont.classList.remove('hidden');
+                bNav.classList.remove('hidden');
+                switchVisitorTab(currentVisitorTab);
+            }
+        }
+
+        function switchVisitorTab(tab) {
+            currentVisitorTab = tab;
+            ['map', 'scan', 'artifacts'].forEach(t => {
+                const sec = document.getElementById('tab-' + t);
+                if (sec) {
+                    sec.classList.toggle('hidden', t !== tab);
+                    sec.classList.toggle('flex', t === tab);
+                }
+            });
+            if (tab === 'scan') CameraManager.start(document.getElementById('visitorCameraVideo'));
+            else CameraManager.stop();
+            if (tab === 'map') setTimeout(resizeMap3D, 60);
+        }
+
+        function switchOwnerSubTab(sub) {
+            currentOwnerSubTab = sub;
+            ['scan', 'add', 'manage'].forEach(s => {
+                const el = document.getElementById('ownerSub-' + s);
+                const btn = document.getElementById('ownerTab-' + s);
+                if (el) el.classList.toggle('hidden', s !== sub);
+                if (btn) {
+                    btn.className = s === sub
+                        ? 'flex-1 py-2 px-2 rounded-xl text-[11px] font-extrabold bg-navy text-white shadow-sm transition'
+                        : 'flex-1 py-2 px-2 rounded-xl text-[11px] font-bold bg-slate-100 text-slate-600 transition';
+                }
+            });
+            if (sub === 'scan') {
+                checkWebXRCapabilities();
+                CameraManager.start(document.getElementById('ownerCameraVideo'));
+                setTimeout(renderVectorMiniMap, 80);
+            } else {
+                CameraManager.stop();
+            }
+        }
+
+        function previewScannedMapAsVisitor() {
+            useScannedMapMode = true;
+            switchAppMode('visitor');
+            switchVisitorTab('map');
+            applyMapSourceVisibility();
+            rebuildScannedMap3D();
+        }
+
+        /* =====================================================================
+         * 15. RENDER DANH SÁCH GIAO DIỆN
+         * ===================================================================== */
+        function renderQuickStrip() {
+            const strip = document.getElementById('quickArtifactStrip');
+            if (!strip) return;
+            strip.innerHTML = artifacts.map(art => `
+                <button type="button" onclick="startNavigationTo('${art.id}')" class="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-navy active:scale-95 transition text-left">
+                    <span class="text-base">${art.icon || '🏺'}</span>
+                    <div class="max-w-[125px]">
+                        <p class="text-[11px] font-extrabold text-navy truncate">${art.name}</p>
+                        <p class="text-[9px] text-slate-500">Tầng ${art.floor} • Chỉ đường</p>
+                    </div>
+                </button>
+            `).join('');
+        }
+
+        function renderArtifactList() {
+            const box = document.getElementById('artifactListContainer');
+            if (!box) return;
+            const q = (document.getElementById('artifactSearchInput')?.value || '').toLowerCase();
+            const list = artifacts.filter(a => a.name.toLowerCase().includes(q) || (a.category || '').toLowerCase().includes(q));
+            box.innerHTML = list.map(art => `
+                <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-2.5">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-xl shrink-0 overflow-hidden">
+                            ${art.imageDataUrl ? `<img src="${art.imageDataUrl}" class="w-full h-full object-cover">` : (art.icon || '🏺')}
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-extrabold text-navy truncate">${art.name}</p>
+                            <p class="text-[10px] text-slate-500">Tầng ${art.floor} • ${art.category || 'Hiện vật'}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-1.5 shrink-0">
+                        <button type="button" onclick="openArtifactDetail('${art.id}')" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-navy text-[11px] font-bold">Xem</button>
+                        <button type="button" onclick="startNavigationTo('${art.id}')" class="px-2.5 py-1.5 rounded-xl bg-navgreen text-white text-[11px] font-bold">Đi tới</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderOwnerManageLists() {
+            document.getElementById('displayCaseCount').textContent = String(displayCases.length);
+            document.getElementById('ownerArtifactCount').textContent = String(artifacts.length);
+            document.getElementById('savedWallCount').textContent = String(scannedWalls.length);
+
+            const caseBox = document.getElementById('displayCasesList');
+            caseBox.innerHTML = displayCases.length === 0
+                ? '<p class="text-[11px] text-slate-400">Chưa có tủ kính 3D nào.</p>'
+                : displayCases.map((dc, i) => `
+                    <div class="p-2 rounded-xl bg-sky-50 border border-sky-200 text-[11px] flex justify-between items-center">
+                        <span>#${i + 1} ${dc.label} (${dc.width}x${dc.height}x${dc.depth}m • ${dc.artifactIds.length} hiện vật)</span>
+                    </div>
+                `).join('');
+
+            const artBox = document.getElementById('ownerArtifactsList');
+            artBox.innerHTML = artifacts.map(a => `
+                <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] flex justify-between items-center gap-2">
+                    <span class="font-bold text-navy truncate">${a.name} (T${a.floor})</span>
+                    <button type="button" onclick="deleteArtifactById('${a.id}')" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px]">Xóa</button>
+                </div>
+            `).join('');
+        }
+
+        function refreshAllUI() {
+            renderQuickStrip();
+            renderArtifactList();
+            renderScannedWallsList();
+            renderOwnerManageLists();
+            renderVectorMiniMap();
+            rebuildScannedMap3D();
+            rebuildMapPins();
+        }
+
+        /* =====================================================================
+         * 16. KHỞI TẠO ỨNG DỤNG
+         * ===================================================================== */
+        window.onload = function () {
+            loadAllLocalData();
+            initMap3D();
+            refreshAllUI();
+            updateAvatarGenderButtonUI();
+
+            window.addEventListener('devicemotion', handleDeviceMotion);
+            window.addEventListener('deviceorientation', (e) => {
+                if (typeof e.alpha === 'number') {
+                    ownerPos.heading = (360 - e.alpha) % 360;
+                    const el = document.getElementById('ownerHeadingVal');
+                    if (el) el.textContent = Math.round(ownerPos.heading) + '°';
+                }
+            });
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('admin') === '1') {
+                openAdminLoginModal();
+            }
+        };
+    </script>
+</body>
+</html>
