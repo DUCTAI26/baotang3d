@@ -81,11 +81,10 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
       }
     });
 
-    // Thử lần lượt: gemini-flash-latest (thử tối đa 2 lần nếu 503), dự phòng gemini-flash-lite-latest
+    // Ưu tiên bản nhẹ (nhanh) trước, nếu lỗi mới dự phòng sang bản tiêu chuẩn
     const attempts = [
-      { model: 'gemini-flash-latest', delayMs: 0 },
-      { model: 'gemini-flash-latest', delayMs: 1500 },
-      { model: 'gemini-flash-lite-latest', delayMs: 1000 }
+      { model: 'gemini-flash-lite-latest' },
+      { model: 'gemini-flash-latest' }
     ];
 
     let response = null;
@@ -93,13 +92,9 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
     let lastErrText = '';
 
     for (const attempt of attempts) {
-      if (attempt.delayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, attempt.delayMs));
-      }
-
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       try {
         response = await fetch(geminiUrl, {
@@ -120,7 +115,6 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
       lastStatus = response.status;
       lastErrText = await response.text();
 
-      // Chỉ thử lại khi quá tải (503) hoặc không tìm thấy model dự phòng (404)
       if (lastStatus !== 503 && lastStatus !== 404) {
         break;
       }
