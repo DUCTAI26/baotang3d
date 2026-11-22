@@ -69,7 +69,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
   }
 }`;
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -97,7 +97,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
     if (!response.ok) {
       const errText = await response.text();
       return {
-        statusCode: response.status,
+        statusCode: response.status === 404 ? 502 : response.status,
         headers,
         body: JSON.stringify({
           error: `UPSTREAM_HTTP_${response.status}`,
