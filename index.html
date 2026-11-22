@@ -1914,9 +1914,15 @@
             return true;
         }
 
+        let selectedWallId = null;
+
         function toggleWallEditRow(id) {
             const row = document.getElementById('editWallRow-' + id);
-            if (row) row.classList.toggle('hidden');
+            if (!row) return;
+            const willOpen = row.classList.contains('hidden');
+            selectedWallId = willOpen ? id : null;
+            row.classList.toggle('hidden');
+            renderVectorMiniMap();
         }
 
         function saveWallEdit(id) {
@@ -2147,16 +2153,20 @@
                 ctx.stroke();
             }
 
-            // Tường 3D
-            scannedWalls.forEach(wall => {
+            // Tường 3D (kèm số thứ tự #1, #2... và tô đỏ tường đang chọn sửa)
+            scannedWalls.forEach((wall, idx) => {
                 const x1 = cx + wall.start.x * scale;
                 const y1 = cy + wall.start.z * scale;
                 const x2 = cx + wall.end.x * scale;
                 const y2 = cy + wall.end.z * scale;
+                const isSelected = (typeof selectedWallId !== 'undefined' && selectedWallId === wall.id);
 
-                ctx.lineWidth = 3.5;
+                ctx.lineWidth = isSelected ? 6 : 3.5;
                 ctx.lineCap = 'round';
-                if (wall.uncertainJoint) {
+                if (isSelected) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.setLineDash([]);
+                } else if (wall.uncertainJoint) {
                     ctx.strokeStyle = '#f59e0b';
                     ctx.setLineDash([4, 3]);
                 } else if (wall.source === 'webxr_measured' || wall.source === 'webxr') {
@@ -2172,9 +2182,22 @@
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                ctx.fillStyle = wall.uncertainJoint ? '#f59e0b' : '#ea580c';
-                ctx.beginPath(); ctx.arc(x1, y1, 2.5, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(x2, y2, 2.5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = isSelected ? '#ef4444' : (wall.uncertainJoint ? '#f59e0b' : '#ea580c');
+                ctx.beginPath(); ctx.arc(x1, y1, isSelected ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(x2, y2, isSelected ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+
+                // Vẽ nhãn số #1, #2... ở giữa bức tường
+                const mx = (x1 + x2) / 2;
+                const my = (y1 + y2) / 2;
+                const tag = '#' + (idx + 1);
+                ctx.font = 'bold 10px Inter, sans-serif';
+                const tw = ctx.measureText(tag).width + 8;
+                ctx.fillStyle = isSelected ? '#ef4444' : '#0f294a';
+                ctx.fillRect(mx - tw / 2, my - 8, tw, 16);
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tag, mx, my);
             });
 
             // Tủ kính & Hiện vật
