@@ -69,7 +69,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
   }
 }`;
 
-    const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+    const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
