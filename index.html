@@ -526,6 +526,31 @@
                     <div class="w-full h-52 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden relative touch-none">
                         <canvas id="vectorMiniMapCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
                     </div>
+                    <!-- CHỈNH NHANH TƯỜNG ĐANG CHỌN (NHÌN TRỰC TIẾP TRÊN MINI-MAP) -->
+                    <div class="p-2.5 rounded-xl bg-amber-50/90 border border-amber-300 space-y-2">
+                        <div class="flex items-center justify-between gap-1.5">
+                            <select id="quickEditWallSelect" onchange="selectQuickEditWall(this.value)" class="flex-1 px-2 py-1.5 rounded-lg bg-white border border-amber-300 text-[11px] font-extrabold text-navy">
+                                <option value="">-- Chọn tường cần chỉnh --</option>
+                            </select>
+                            <span id="wallSnapBadge" class="px-2 py-1 rounded-lg bg-slate-200 text-slate-600 text-[10px] font-extrabold shrink-0">Chưa chọn</span>
+                        </div>
+                        <div id="quickWallControls" class="hidden space-y-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <input type="number" step="0.1" min="0.3" id="quickWallLen" class="w-20 px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold" placeholder="Dài (m)">
+                                <span class="text-[10px] text-slate-400">×</span>
+                                <input type="number" step="0.1" min="1.0" id="quickWallH" class="w-20 px-2 py-1 rounded-lg bg-white border border-slate-300 text-[11px] font-bold" placeholder="Cao (m)">
+                                <button type="button" onclick="saveQuickWallEdit()" class="flex-1 py-1 rounded-lg bg-emerald-600 text-white font-bold text-[11px] active:scale-95">Lưu</button>
+                            </div>
+                            <div class="grid grid-cols-6 gap-1">
+                                <button type="button" onclick="nudgeQuickWall(-0.25, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">⬅️</button>
+                                <button type="button" onclick="nudgeQuickWall(0, -0.25)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">⬆️</button>
+                                <button type="button" onclick="nudgeQuickWall(0, 0.25)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">⬇️</button>
+                                <button type="button" onclick="nudgeQuickWall(0.25, 0)" class="py-1.5 rounded-lg bg-white border border-slate-300 text-[11px] font-bold active:scale-95">➡️</button>
+                                <button type="button" onclick="rotateQuickWall(15)" class="py-1.5 rounded-lg bg-amber-100 border border-amber-300 text-[10px] font-extrabold text-amber-900 active:scale-95">↻15°</button>
+                                <button type="button" onclick="snapQuickWallCorners()" title="Tự hít vào góc gần nhất" class="py-1.5 rounded-lg bg-emerald-600 text-white text-[10px] font-extrabold active:scale-95">🧲 Khớp</button>
+                            </div>
+                        </div>
+                    </div>
                     <!-- CHẠM MINI-MAP ĐỂ ĐẶT VỊ TRÍ HIỆN VẬT / TỦ KÍNH -->
                     <div class="p-2 rounded-xl bg-indigo-50 border border-indigo-200 space-y-1.5">
                         <label class="text-[10px] font-extrabold text-navy block">📍 Chạm lên Mini-Map 2D để dời vị trí:</label>
@@ -1757,6 +1782,7 @@
             rebuildScannedMap3D();
             showToast('Đã xóa toàn bộ tường & lối đi đã quét.');
         }
+        if (typeof syncQuickWallEditorUI === 'function') syncQuickWallEditorUI();
 
         function renderScannedWallsList() {
             populateMiniMapPlacementSelect();
@@ -1914,18 +1940,169 @@
             refreshAllUI();
             showToast(`Đã cập nhật tường: Dài ${newLen.toFixed(2)}m × Cao ${newH.toFixed(1)}m.`);
         }
-        function nudgeSingleWall(id, dx, dz) {
-            const idx = scannedWalls.findIndex(w => w.id === id);
+        function getWallCornerSnapState(wall) {
+            let startSnapped = false;
+            let endSnapped = false;
+            for (const other of scannedWalls) {
+                if (other.id === wall.id || other.floor !== wall.floor) continue;
+                const pts = [other.start, other.end];
+                for (const p of pts) {
+                    if (Math.hypot(wall.start.x - p.x, wall.start.z - p.z) <= 0.08) startSnapped = true;
+                    if (Math.hypot(wall.end.x - p.x, wall.end.z - p.z) <= 0.08) endSnapped = true;
+                }
+            }
+            return {
+                startSnapped,
+                endSnapped,
+                count: (startSnapped ? 1 : 0) + (endSnapped ? 1 : 0)
+            };
+        }
+
+        function syncQuickWallEditorUI() {
+            const sel = document.getElementById('quickEditWallSelect');
+            const controls = document.getElementById('quickWallControls');
+            const badge = document.getElementById('wallSnapBadge');
+            if (!sel || !controls || !badge) return;
+
+            let html = '<option value="">-- Chọn tường cần chỉnh --</option>';
+            scannedWalls.forEach((w, idx) => {
+                html += `<option value="${w.id}">Tường #${idx + 1} (${w.length.toFixed(2)}m • T${w.floor})</option>`;
+            });
+            sel.innerHTML = html;
+
+            const activeWall = scannedWalls.find(w => w.id === selectedWallId);
+            if (!activeWall) {
+                sel.value = '';
+                controls.classList.add('hidden');
+                badge.textContent = 'Chưa chọn';
+                badge.className = 'px-2 py-1 rounded-lg bg-slate-200 text-slate-600 text-[10px] font-extrabold shrink-0';
+                return;
+            }
+
+            sel.value = activeWall.id;
+            controls.classList.remove('hidden');
+            document.getElementById('quickWallLen').value = activeWall.length.toFixed(2);
+            document.getElementById('quickWallH').value = activeWall.height.toFixed(1);
+
+            const snap = getWallCornerSnapState(activeWall);
+            if (snap.count === 2) {
+                badge.textContent = '✅ Đã khớp 2 góc';
+                badge.className = 'px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 text-[10px] font-extrabold shrink-0';
+            } else if (snap.count === 1) {
+                badge.textContent = '🟡 Khớp 1/2 góc';
+                badge.className = 'px-2 py-1 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-extrabold shrink-0';
+            } else {
+                badge.textContent = '⚪ Chưa khớp góc';
+                badge.className = 'px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-[10px] font-extrabold shrink-0';
+            }
+        }
+
+        function selectQuickEditWall(id) {
+            selectedWallId = id || null;
+            syncQuickWallEditorUI();
+            renderVectorMiniMap();
+        }
+
+        function saveQuickWallEdit() {
+            if (!selectedWallId) return;
+            const idx = scannedWalls.findIndex(w => w.id === selectedWallId);
             if (idx === -1) return;
+            const newLen = parseFloat(document.getElementById('quickWallLen')?.value);
+            const newH = parseFloat(document.getElementById('quickWallH')?.value);
+            if (!Number.isFinite(newLen) || newLen < 0.3 || !Number.isFinite(newH) || newH < 1.0) {
+                showToast('Kích thước tường không hợp lệ.');
+                return;
+            }
             const w = scannedWalls[idx];
+            const midX = (w.start.x + w.end.x) / 2;
+            const midZ = (w.start.z + w.end.z) / 2;
+            const half = newLen / 2;
             scannedWalls[idx] = normalizeWallRecord({
                 ...w,
-                start: { x: w.start.x + dx, y: w.start.y, z: w.start.z + dz },
-                end: { x: w.end.x + dx, y: w.end.y, z: w.end.z + dz },
+                start: { x: midX - w.direction.x * half, y: w.start.y, z: midZ - w.direction.z * half },
+                end: { x: midX + w.direction.x * half, y: w.end.y, z: midZ + w.direction.z * half },
+                height: newH,
                 updatedAt: Date.now()
             });
             saveScannedMapLocal();
             refreshAllUI();
+            syncQuickWallEditorUI();
+            showToast(`Đã cập nhật kích thước: ${newLen.toFixed(2)}m × ${newH.toFixed(1)}m.`);
+        }
+
+        function nudgeQuickWall(dx, dz) {
+            if (selectedWallId) nudgeSingleWall(selectedWallId, dx, dz);
+        }
+
+        function rotateQuickWall(deg) {
+            if (selectedWallId) rotateSingleWall(selectedWallId, deg);
+        }
+
+        function snapQuickWallCorners() {
+            if (!selectedWallId) return;
+            const idx = scannedWalls.findIndex(w => w.id === selectedWallId);
+            if (idx === -1) return;
+            const w = scannedWalls[idx];
+            let s = { ...w.start };
+            let e = { ...w.end };
+            let snappedAny = false;
+
+            for (const other of scannedWalls) {
+                if (other.id === w.id || other.floor !== w.floor) continue;
+                for (const p of [other.start, other.end]) {
+                    if (Math.hypot(s.x - p.x, s.z - p.z) <= 0.65) {
+                        s.x = p.x; s.z = p.z; snappedAny = true;
+                    }
+                    if (Math.hypot(e.x - p.x, e.z - p.z) <= 0.65) {
+                        e.x = p.x; e.z = p.z; snappedAny = true;
+                    }
+                }
+            }
+
+            if (!snappedAny) {
+                showToast('Chưa có góc tường nào gần (< 0.65m). Hãy đẩy tường lại gần thêm chút.');
+                return;
+            }
+            scannedWalls[idx] = normalizeWallRecord({ ...w, start: s, end: e, updatedAt: Date.now() });
+            saveScannedMapLocal();
+            refreshAllUI();
+            syncQuickWallEditorUI();
+            if (navigator.vibrate) navigator.vibrate(25);
+            showToast('✅ Đã tự động khớp khít góc tường!');
+        }
+
+        function nudgeSingleWall(id, dx, dz) {
+            const idx = scannedWalls.findIndex(w => w.id === id);
+            if (idx === -1) return;
+            const w = scannedWalls[idx];
+            let ns = { x: w.start.x + dx, y: w.start.y, z: w.start.z + dz };
+            let ne = { x: w.end.x + dx, y: w.end.y, z: w.end.z + dz };
+
+            // Tự động hít góc nếu đầu tường tiến vào vùng <= 0.22m của góc tường khác
+            let bestDist = 0.22;
+            let shiftX = 0, shiftZ = 0, didSnap = false;
+            for (const other of scannedWalls) {
+                if (other.id === w.id || other.floor !== w.floor) continue;
+                for (const p of [other.start, other.end]) {
+                    const d1 = Math.hypot(ns.x - p.x, ns.z - p.z);
+                    if (d1 < bestDist) { bestDist = d1; shiftX = p.x - ns.x; shiftZ = p.z - ns.z; didSnap = true; }
+                    const d2 = Math.hypot(ne.x - p.x, ne.z - p.z);
+                    if (d2 < bestDist) { bestDist = d2; shiftX = p.x - ne.x; shiftZ = p.z - ne.z; didSnap = true; }
+                }
+            }
+            if (didSnap) {
+                ns.x += shiftX; ns.z += shiftZ;
+                ne.x += shiftX; ne.z += shiftZ;
+            }
+
+            scannedWalls[idx] = normalizeWallRecord({ ...w, start: ns, end: ne, updatedAt: Date.now() });
+            saveScannedMapLocal();
+            refreshAllUI();
+            syncQuickWallEditorUI();
+            if (didSnap) {
+                if (navigator.vibrate) navigator.vibrate(25);
+                showToast('✅ Đã khớp góc tường!');
+            }
         }
 
         function rotateSingleWall(id, deg) {
@@ -1950,6 +2127,7 @@
             });
             saveScannedMapLocal();
             refreshAllUI();
+            syncQuickWallEditorUI();
         }
 
         function applyExactRoomScale() {
@@ -2184,9 +2362,11 @@
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                ctx.fillStyle = isSelected ? '#ef4444' : (wall.uncertainJoint ? '#f59e0b' : '#ea580c');
-                ctx.beginPath(); ctx.arc(x1, y1, isSelected ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
-                ctx.beginPath(); ctx.arc(x2, y2, isSelected ? 3.5 : 2.5, 0, Math.PI * 2); ctx.fill();
+                const snapState = (typeof getWallCornerSnapState === 'function') ? getWallCornerSnapState(wall) : { startSnapped: false, endSnapped: false };
+                ctx.fillStyle = snapState.startSnapped ? '#16a34a' : (isSelected ? '#ef4444' : '#ea580c');
+                ctx.beginPath(); ctx.arc(x1, y1, snapState.startSnapped ? 4 : 2.5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = snapState.endSnapped ? '#16a34a' : (isSelected ? '#ef4444' : '#ea580c');
+                ctx.beginPath(); ctx.arc(x2, y2, snapState.endSnapped ? 4 : 2.5, 0, Math.PI * 2); ctx.fill();
 
                 // Vẽ nhãn số #1, #2... ở giữa bức tường
                 const mx = (x1 + x2) / 2;
