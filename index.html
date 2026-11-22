@@ -215,16 +215,16 @@
                         </div>
                     </div>
 
-                    <!-- D-pad di chuyển trong nhà góc trái dưới -->
-                    <div id="indoorDpad" class="absolute left-2.5 bottom-3 z-10 bg-white/90 backdrop-blur p-1.5 rounded-2xl shadow-md border border-slate-200/80 grid grid-cols-3 gap-1 w-[108px]">
+                    <!-- Tay cầm điều khiển kiểu Game Pad góc trái dưới (hỗ trợ nhấn giữ liên tục) -->
+                    <div id="indoorDpad" class="absolute left-2.5 bottom-3 z-10 bg-slate-900/90 backdrop-blur p-2 rounded-3xl shadow-xl border border-slate-700 grid grid-cols-3 gap-1 w-[118px] select-none">
                         <div></div>
-                        <button type="button" onclick="moveUserStep(0, -1)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">▲</button>
+                        <button type="button" onpointerdown="startHoldMove(0, -1)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">▲</button>
                         <div></div>
-                        <button type="button" onclick="moveUserStep(-1, 0)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">◀</button>
-                        <button type="button" onclick="toggleUserFloor()" id="dpadFloorBtn" class="h-8 rounded-lg bg-amber-100 text-amber-800 font-extrabold text-[10px] active:scale-90 transition">T1</button>
-                        <button type="button" onclick="moveUserStep(1, 0)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">▶</button>
+                        <button type="button" onpointerdown="startHoldMove(-1, 0)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">◀</button>
+                        <button type="button" onclick="toggleUserFloor()" id="dpadFloorBtn" title="Chuyển nhanh tầng T1 / T2" class="h-9 rounded-xl bg-amber-400 text-slate-950 font-black text-[10px] active:scale-90 transition shadow">T1</button>
+                        <button type="button" onpointerdown="startHoldMove(1, 0)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">▶</button>
                         <div></div>
-                        <button type="button" onclick="moveUserStep(0, 1)" class="h-8 rounded-lg bg-slate-100 hover:bg-navy hover:text-white text-navy font-bold text-xs active:scale-90 transition">▼</button>
+                        <button type="button" onpointerdown="startHoldMove(0, 1)" onpointerup="stopHoldMove()" onpointerleave="stopHoldMove()" onpointercancel="stopHoldMove()" class="h-9 rounded-xl bg-slate-700 hover:bg-accent text-white font-extrabold text-xs active:scale-90 transition shadow-inner">▼</button>
                         <div></div>
                     </div>
 
@@ -3129,11 +3129,50 @@
             updateUserAvatar3D();
         }
 
+        function getStairClimbY(x, z, floor) {
+            const stair = displayCases.find(c => c.isStair);
+            if (!stair) return (floor - 1) * 3.5;
+
+            const angle = -(stair.angle || 0);
+            const dx = x - stair.position.x;
+            const dz = z - stair.position.z;
+            // Đưa tọa độ vào hệ quy chiếu cục bộ của cầu thang
+            const localX = dx * Math.cos(angle) - dz * Math.sin(angle);
+            const localZ = dx * Math.sin(angle) + dz * Math.cos(angle);
+
+            const halfW = (stair.width || 1.2) / 2 + 0.35;
+            const halfD = (stair.depth || 2.2) / 2 + 0.35;
+            if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
+                const stairH = stair.height || 3.5;
+                const depth = stair.depth || 2.2;
+                // localZ từ -depth/2 (chân thang) đến +depth/2 (đỉnh thang)
+                const rawRatio = (localZ + depth / 2) / depth;
+                const ratio = Math.max(0, Math.min(1, rawRatio));
+
+                if (floor === 1 && ratio >= 0.85) {
+                    userPos.floor = 2;
+                    const dpadFloorBtn = document.getElementById('dpadFloorBtn');
+                    if (dpadFloorBtn) dpadFloorBtn.textContent = 'T2';
+                    showToast('🪜 Bạn đã bước lên Tầng 2!');
+                    return 3.5;
+                }
+                if (floor === 2 && ratio <= 0.15) {
+                    userPos.floor = 1;
+                    const dpadFloorBtn = document.getElementById('dpadFloorBtn');
+                    if (dpadFloorBtn) dpadFloorBtn.textContent = 'T1';
+                    showToast('🪜 Bạn đã bước xuống Tầng 1!');
+                    return 0;
+                }
+                return ratio * stairH;
+            }
+            return (userPos.floor - 1) * 3.5;
+        }
+
         function updateUserAvatar3D() {
             if (!userAvatarMesh) return;
             const targetX = userPos.x;
-            const targetY = (userPos.floor - 1) * 3.5;
             const targetZ = userPos.z;
+            const targetY = getStairClimbY(targetX, targetZ, userPos.floor);
             const dx = targetX - userAvatarMesh.position.x;
             const dz = targetZ - userAvatarMesh.position.z;
             if (Math.hypot(dx, dz) > 0.01) {
@@ -3506,8 +3545,7 @@
             }
             if (isFirstPersonMode && activeAvatar) {
                 const eyeHeight = 1.6;
-                const activeFloor = userPos.floor || 1;
-                const floorY = (activeFloor - 1) * 3.5;
+                const floorY = activeAvatar.position.y;
                 camera.position.set(activeAvatar.position.x, floorY + eyeHeight, activeAvatar.position.z);
                 if (fpYaw === null) {
                     fpYaw = activeAvatar.rotation.y || 0;
@@ -3574,8 +3612,9 @@
                 }
             }
 
-            // Kiểm tra va chạm tủ kính cùng tầng
+            // Kiểm tra va chạm tủ kính cùng tầng (cho phép bước vào vùng cầu thang isStair)
             for (const dc of displayCases) {
+                if (dc.isStair) continue;
                 if (dc.floor !== floor) continue;
                 const halfW = (dc.width || 1.0) / 2 + 0.25;
                 const halfD = (dc.depth || 0.8) / 2 + 0.25;
@@ -3586,8 +3625,21 @@
             return false;
         }
 
+        let _holdMoveTimer = null;
+        function startHoldMove(dx, dz) {
+            stopHoldMove();
+            moveUserStep(dx, dz);
+            _holdMoveTimer = setInterval(() => moveUserStep(dx, dz), 160);
+        }
+        function stopHoldMove() {
+            if (_holdMoveTimer) {
+                clearInterval(_holdMoveTimer);
+                _holdMoveTimer = null;
+            }
+        }
+
         function moveUserStep(dx, dz) {
-            const step = 0.6;
+            const step = 0.45;
             let moveX = dx * step;
             let moveZ = dz * step;
 
