@@ -40,7 +40,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Giới hạn kích thước ảnh ~4.5MB base64 để tránh quá tải Netlify Function
     if (imageBase64.length > 6 * 1024 * 1024) {
       return {
         statusCode: 413,
@@ -69,39 +68,71 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
   }
 }`;
 
-    const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    const response = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': apiKey },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: imageBase64 } }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json'
-        }
-      })
+    const requestBody = JSON.stringify({
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType, data: imageBase64 } }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: 'application/json'
+      }
     });
 
-    clearTimeout(timeoutId);
+    // Thử lần lượt: gemini-flash-latest (thử tối đa 2 lần nếu 503), dự phòng gemini-flash-lite-latest
+    const attempts = [
+      { model: 'gemini-flash-latest', delayMs: 0 },
+      { model: 'gemini-flash-latest', delayMs: 1500 },
+      { model: 'gemini-flash-lite-latest', delayMs: 1000 }
+    ];
 
-    if (!response.ok) {
-      const errText = await response.text();
+    let response = null;
+    let lastStatus = 500;
+    let lastErrText = '';
+
+    for (const attempt of attempts) {
+      if (attempt.delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, attempt.delayMs));
+      }
+
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${attempt.model}:generateContent`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      try {
+        response = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-goog-api-key': apiKey
+          },
+          signal: controller.signal,
+          body: requestBody
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (response.ok) break;
+
+      lastStatus = response.status;
+      lastErrText = await response.text();
+
+      // Chỉ thử lại khi quá tải (503) hoặc không tìm thấy model dự phòng (404)
+      if (lastStatus !== 503 && lastStatus !== 404) {
+        break;
+      }
+    }
+
+    if (!response || !response.ok) {
       return {
-        statusCode: response.status === 404 ? 502 : response.status,
+        statusCode: lastStatus === 404 ? 502 : lastStatus,
         headers,
         body: JSON.stringify({
-          error: `UPSTREAM_HTTP_${response.status}`,
-          message: errText.slice(0, 300)
+          error: `UPSTREAM_HTTP_${lastStatus}`,
+          message: lastErrText.slice(0, 300)
         })
       };
     }
