@@ -290,7 +290,7 @@
                 <!-- Thanh điều khiển chụp & nhận diện AI -->
                 <div class="bg-slate-950 p-4 border-t border-slate-800 shrink-0">
                     <p class="text-[11px] text-slate-300 text-center mb-3">
-                        Đưa hiện vật vào khung để đối chiếu với ảnh mẫu do bảo tàng đăng ký. Không thêm hoặc sửa dữ liệu. Kết quả sẽ được đọc tự động bằng tiếng Việt.
+                        <span id="autoScanStatus">Tự động quét khi đưa hiện vật vào khung.</span> Đối chiếu với ảnh mẫu do bảo tàng đăng ký. Không thêm hoặc sửa dữ liệu. Kết quả sẽ được đọc tự động bằng tiếng Việt.
                     </p>
                     <div class="flex items-center justify-center gap-3">
                         <label class="px-3.5 py-2.5 rounded-2xl bg-slate-800 text-slate-200 text-xs font-bold border border-slate-700 cursor-pointer active:scale-95 transition">
@@ -299,7 +299,7 @@
                         </label>
                         <button type="button" onclick="captureAndRecognize()" class="flex-1 py-3 px-4 rounded-2xl bg-accent hover:bg-accent-dark text-white text-sm font-extrabold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
                             <span>📸</span>
-                            <span>Quét &amp; Nghe thuyết minh</span>
+                            <span>Quét lại ngay</span>
                         </button>
                     </div>
                 </div>
@@ -2839,6 +2839,45 @@
 
 
         let visitorMatchToken=0, visitorMatchController=null;
+
+        let autoConsentAsked=false, autoScanBusy=false, autoLastId=null, autoLastAt=0, autoLastMatchAt=0;
+        const scanFeatureCache=new Map();
+        async function scanFeatures(url){
+            const img=new Image(); img.src=url; await img.decode();
+            const c=document.createElement('canvas'); c.width=c.height=32;
+            const ctx=c.getContext('2d',{willReadFrequently:true});
+            const w=img.naturalWidth,h=img.naturalHeight;
+            ctx.drawImage(img,w*.12,h*.12,w*.76,h*.76,0,0,32,32);
+            const d=ctx.getImageData(0,0,32,32).data, v=[], hist=Array(64).fill(0);
+            for(let i=0;i<d.length;i+=4){v.push((d[i]*.299+d[i+1]*.587+d[i+2]*.114)/255);hist[(d[i]>>6)*16+(d[i+1]>>6)*4+(d[i+2]>>6)]++;}
+            const mean=v.reduce((a,b)=>a+b,0)/v.length;
+            const sd=Math.sqrt(v.reduce((a,b)=>a+(b-mean)**2,0)/v.length);
+            return {v:v.map(x=>(x-mean)/Math.max(sd,.03)),hist:hist.map(x=>x/1024),sd};
+        }
+        async function localVisitorMatch(url,entries){
+            try{
+                const q=await scanFeatures(url); if(q.sd<.07)return null;
+                const scores=[];
+                for(const a of entries){
+                    try{let r=scanFeatureCache.get(a.imageDataUrl);if(!r){r=await scanFeatures(a.imageDataUrl);if(scanFeatureCache.size>80)scanFeatureCache.clear();scanFeatureCache.set(a.imageDataUrl,r);}
+                    const corr=q.v.reduce((sum,x,i)=>sum+x*r.v[i],0)/1024;
+                    const color=q.hist.reduce((sum,x,i)=>sum+Math.min(x,r.hist[i]),0);
+                    scores.push({id:a.id,score:.8*corr+.2*color});}catch(e){}
+                }
+                scores.sort((a,b)=>b.score-a.score);
+                return scores[0]?.score>=.93 && (!scores[1]||scores[0].score-scores[1].score>=.08)?scores[0].id:null;
+            }catch(e){return null;}
+        }
+        setInterval(async()=>{
+            if(autoScanBusy||visitorMatchController||pendingConsentResolve||document.hidden||currentAppMode!=='visitor'||currentVisitorTab!=='scan'||!document.getElementById('artifactDetailModal').classList.contains('hidden')||!document.getElementById('visitorMatchModal').classList.contains('hidden'))return;
+            const video=document.getElementById('visitorCameraVideo'); if(!video?.srcObject||video.readyState<2)return;
+            const label=document.getElementById('autoScanStatus');
+            if(!registeredScanEntries().length){label.textContent='Chưa có hiện vật đăng ký trên thiết bị này.';return;}
+            if(Date.now()-autoLastAt<12000)return;
+            autoScanBusy=true;
+            try{label.textContent='Đang tự động đối chiếu…';await lookupVisitorArtifact(captureVideoFrameDataUrl(video),true);label.textContent=document.getElementById('visitorMatchStatus').textContent||'Đưa hiện vật vào khung.';}catch(e){label.textContent='Đang chờ ảnh rõ hơn.';}finally{autoScanBusy=false;autoLastAt=Date.now();}
+        },2500);
+
         function closeVisitorMatch(){
             visitorMatchToken++;
             if(visitorMatchController) visitorMatchController.abort();
@@ -2861,30 +2900,36 @@
         }
         function showMatchedArtifact(id, exact){
             if(currentAppMode!=='visitor'||!registeredScanEntries().some(a=>a.id===id)) return;
+            if(autoScanBusy && autoLastId===id && Date.now()-autoLastMatchAt<30000)return;
+            autoLastId=id;autoLastMatchAt=Date.now();
             closeVisitorMatch();
             openArtifactDetail(id);
             const note=document.getElementById('detailMatchNote');
-            note.textContent=exact?'Khớp ảnh mẫu đã đăng ký. Nội dung do chủ sở hữu cung cấp.':'AI gợi ý khớp ảnh mẫu đã đăng ký. Hãy đối chiếu ảnh và nhãn hiện vật. Nội dung do chủ sở hữu cung cấp.';
+            note.textContent=exact?'Khớp ảnh mẫu đã đăng ký. Nội dung do chủ sở hữu cung cấp.':'Hệ thống gợi ý khớp ảnh mẫu đã đăng ký. Hãy đối chiếu ảnh và nhãn hiện vật. Nội dung do chủ sở hữu cung cấp.';
             note.classList.remove('hidden');
             narrateCurrentDetail();
         }
-        async function lookupVisitorArtifact(dataUrl){
-            if(currentAppMode!=='visitor'||visitorMatchController||pendingConsentResolve) return;
+        async function lookupVisitorArtifact(dataUrl, automatic=false){
+            if(currentAppMode!=='visitor'||visitorMatchController||pendingConsentResolve||(!automatic&&autoScanBusy)) return;
             stopSpeaking();
             const token=++visitorMatchToken;
             const status=document.getElementById('visitorMatchStatus');
             const modal=document.getElementById('visitorMatchModal');
-            document.getElementById('visitorMatchImage').src=dataUrl; modal.classList.remove('hidden');
+            document.getElementById('visitorMatchImage').src=dataUrl; if(!automatic) modal.classList.remove('hidden');
             const active=()=>token===visitorMatchToken&&currentAppMode==='visitor';
+            status.textContent='Đang đối chiếu ảnh mẫu…';
             const entries=registeredScanEntries();
             if(!entries.length){status.textContent='Chưa có ảnh mẫu và nội dung thuyết minh được chủ sở hữu đăng ký. Bạn có thể xem danh mục hiện vật.';return;}
             const exact=entries.filter(a=>a.imageDataUrl===dataUrl);
             if(exact.length===1){showMatchedArtifact(exact[0].id,true);return;}
             if(exact.length>1){status.textContent='Có nhiều hiện vật dùng cùng một ảnh mẫu. Không thể xác định chính xác; hãy xem danh mục.';return;}
+            const local=await localVisitorMatch(dataUrl,entries); if(!active())return; if(local){showMatchedArtifact(local,false);return;}
+            if(automatic && !aiConsentGrantedSession){if(autoConsentAsked)return;autoConsentAsked=true;}
             if(!navigator.onLine){status.textContent='Không có mạng để đối chiếu ảnh mới. Bạn vẫn có thể mở danh mục và nghe nội dung đã lưu.';return;}
             status.textContent='Chờ xác nhận gửi ảnh quét và ảnh mẫu đến AI.';
             const consent=await requestUserConsentForAI();
             if(!active()) return;
+            
             if(!consent){status.textContent='Bạn đã từ chối gửi ảnh. Không có dữ liệu nào bị thêm hoặc sửa.';return;}
             const controller=new AbortController(); visitorMatchController=controller;
             let hits=[], ambiguous=false;
@@ -2908,7 +2953,7 @@
                 if(!active())return;
                 if(!ambiguous&&hits.length===1){showMatchedArtifact(hits[0],false);return;}
                 status.textContent=ambiguous||hits.length>1?'Có nhiều ảnh mẫu tương tự; chưa xác định được hiện vật. Hãy đổi góc chụp hoặc xem danh mục.':'Không tìm thấy hiện vật tương ứng trong dữ liệu đã đăng ký. Hãy đổi góc chụp hoặc xem danh mục.';
-            }catch(e){if(active())status.textContent='Chưa thể đối chiếu ảnh: dịch vụ AI không phản hồi hoặc chưa cấu hình. Hãy thử lại hoặc xem danh mục.';}
+            }catch(e){if(active())status.textContent='Chưa thể đối chiếu ảnh: '+(e.name==='AbortError'?'hết thời gian chờ':e.message)+'. Kiểm tra API match-artifact trên Netlify.';}
             finally{if(visitorMatchController===controller)visitorMatchController=null;}
         }
 
@@ -4345,7 +4390,7 @@
 
         function switchAppMode(mode) {
             if(mode==='owner'&&!isAdminUnlocked)return;
-            closeVisitorMatch();closeAiConfirmModal();if(pendingConsentResolve)resolveAiConsent(false);aiConsentGrantedSession=false;stopSpeaking();
+            closeVisitorMatch();closeAiConfirmModal();if(pendingConsentResolve)resolveAiConsent(false);aiConsentGrantedSession=false;autoConsentAsked=false;stopSpeaking();
             stopHoldMove();
             currentAppMode = mode;
             updateUserAvatar3D(true);
