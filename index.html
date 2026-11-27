@@ -134,7 +134,7 @@
                 </button>
                 <div class="flex items-center gap-1.5">
                     <button type="button" onclick="toggleVoiceEngine()" id="voiceEngineBtn" class="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 active:scale-95 transition">
-                        ☁️ Giọng Cloud
+                        📱 Giọng đọc tiếng Việt
                     </button>
                     <button type="button" onclick="stopSpeaking()" id="stopAudioBtn" class="hidden px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
                         ⏹ Dừng
@@ -202,8 +202,8 @@
                     <!-- Nút chọn tầng, Nhân vật Nam/Nữ & Zoom bên phải -->
                     <div class="absolute right-2.5 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-2">
                         <div class="bg-white/95 backdrop-blur rounded-2xl shadow-md border border-slate-200 p-1 flex flex-col gap-1">
-                            <button type="button" onclick="setFloorView('2')" id="floorBtn-2" class="w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100">T2</button>
-                            <button type="button" onclick="setFloorView('1')" id="floorBtn-1" class="w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100">T1</button>
+                            <button type="button" onclick="setFloorView('2')" id="floorBtn-2" title="Lọc hiện vật tầng 2, không di chuyển nhân vật" class="w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100">T2</button>
+                            <button type="button" onclick="setFloorView('1')" id="floorBtn-1" title="Lọc hiện vật tầng 1, không di chuyển nhân vật" class="w-9 h-8 rounded-xl text-[11px] font-bold text-slate-600 hover:bg-slate-100">T1</button>
                             <button type="button" onclick="setFloorView('all')" id="floorBtn-all" class="w-9 h-8 rounded-xl text-[11px] font-bold bg-navy text-white shadow-sm">Cả 2</button>
                         </div>
                         <div class="bg-white/95 backdrop-blur rounded-2xl shadow-md border border-slate-200 p-1 flex flex-col gap-1">
@@ -218,7 +218,7 @@
                     <!-- Nút tròn điều khiển di chuyển nhân vật (Circular Analog Pad) -->
                     <div id="indoorDpad" class="absolute left-3 bottom-3 z-10 w-28 h-28 rounded-full bg-slate-900/85 backdrop-blur-md shadow-2xl border-2 border-slate-600/80 flex items-center justify-center select-none touch-none">
                         <div id="joyKnob" class="w-11 h-11 rounded-full bg-gradient-to-br from-accent to-orange-700 text-white font-black text-[10px] shadow-lg border-2 border-white/80 flex items-center justify-center transition-transform duration-75 cursor-grab active:cursor-grabbing">
-                            <span id="dpadFloorBtn" onclick="toggleUserFloor()" title="Chạm đổi tầng T1/T2">T1</span>
+                            <span id="dpadFloorBtn" class="pointer-events-none" title="Tầng hiện tại của nhân vật">T1</span>
                         </div>
                         <span class="pointer-events-none absolute top-1.5 text-[9px] font-extrabold text-slate-300">▲</span>
                         <span class="pointer-events-none absolute bottom-1.5 text-[9px] font-extrabold text-slate-300">▼</span>
@@ -290,7 +290,7 @@
                 <!-- Thanh điều khiển chụp & nhận diện AI -->
                 <div class="bg-slate-950 p-4 border-t border-slate-800 shrink-0">
                     <p class="text-[11px] text-slate-300 text-center mb-3">
-                        Chụp ảnh hiện vật để AI nhận diện qua Netlify Function (chỉ gửi ảnh khi bạn đồng ý).
+                        Đưa hiện vật vào khung để đối chiếu với ảnh mẫu do bảo tàng đăng ký. Không thêm hoặc sửa dữ liệu. Kết quả sẽ được đọc tự động bằng tiếng Việt.
                     </p>
                     <div class="flex items-center justify-center gap-3">
                         <label class="px-3.5 py-2.5 rounded-2xl bg-slate-800 text-slate-200 text-xs font-bold border border-slate-700 cursor-pointer active:scale-95 transition">
@@ -299,7 +299,7 @@
                         </label>
                         <button type="button" onclick="captureAndRecognize()" class="flex-1 py-3 px-4 rounded-2xl bg-accent hover:bg-accent-dark text-white text-sm font-extrabold shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
                             <span>📸</span>
-                            <span>Quét &amp; Nhận diện AI</span>
+                            <span>Quét &amp; Nghe thuyết minh</span>
                         </button>
                     </div>
                 </div>
@@ -364,8 +364,8 @@
                         <div>
                             <label class="text-[9px] font-bold text-slate-600">Dựng ở tầng</label>
                             <select id="aiRoomFloorSelect" class="w-full mt-0.5 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-navy">
-                                <option value="1">Tầng 1</option>
-                                <option value="2">Tầng 2</option>
+                                <option value="1">Tầng 1 (chỉnh sửa)</option>
+                                <option value="2">Tầng 2 (chỉnh sửa)</option>
                             </select>
                         </div>
                     </div>
@@ -411,9 +411,18 @@
 
                     <!-- Trạng thái hiệu chỉnh hệ tọa độ chung -->
                     <div id="arCalibrationStatus" class="p-2 rounded-xl bg-amber-50/80 border border-amber-200 text-[10px] font-semibold text-amber-900">
-                        ⚠️ Chưa hiệu chỉnh điểm gốc AR với bản đồ bảo tàng. Vị trí thực tế chưa được khóa.
+                        ⚠️ Chưa hiệu chỉnh điểm gốc AR với bản đồ bảo tàng. Vị trí chỉ tương đối.
                     </div>
 
+                    <details class="rounded-xl border border-slate-200 p-2 text-[10px]">
+                        <summary class="font-bold cursor-pointer">Mốc bắt đầu AR (để trống = vị trí hiện tại)</summary>
+                        <div class="grid grid-cols-3 gap-1 mt-2">
+                            <label>X (m)<input id="scanAnchorX" type="number" step="0.05" class="w-full rounded border p-1" placeholder="Tự động"></label>
+                            <label>Z (m)<input id="scanAnchorZ" type="number" step="0.05" class="w-full rounded border p-1" placeholder="Tự động"></label>
+                            <label>Hướng (°)<input id="scanAnchorHeading" type="number" step="1" class="w-full rounded border p-1" placeholder="Hiện tại"></label>
+                        </div>
+                        <p class="mt-1 text-slate-500">Khi quét tiếp bản đồ cũ, nhập tọa độ và hướng tại mốc thực tế đã biết. Không phải định vị tuyệt đối.</p>
+                    </details>
                     <!-- Bảng thông số nhận diện & đo đạc thời gian thực -->
                     <div class="grid grid-cols-3 gap-1.5 text-center">
                         <div class="bg-slate-50 rounded-xl p-2 border border-slate-200">
@@ -430,9 +439,10 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-1.5 text-[10px] bg-slate-50 p-2 rounded-xl border border-slate-200">
-                        <div>📏 Tường gần nhất: <strong id="xrLastWallMeasure" class="text-navy">--</strong></div>
+                        <div>📏 Mặt đứng đã đo: <strong id="xrLastWallMeasure" class="text-navy">--</strong></div>
                         <div>🔗 Ghép nối: <strong id="wallMergeStatus" class="text-accent">Sẵn sàng</strong></div>
                     </div>
+                    <p class="text-[10px] text-slate-500">AR đo phần bề mặt nhìn thấy, không phải chiều dài toàn bộ tường. Kiểm tra lối đi trước khi di chuyển và đo lại nếu cần.</p>
                     <p id="xrPlaneStatusText" class="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1.5 rounded-lg">
                         Trạng thái: Chưa phát hiện mặt phẳng. Di chuyển camera chậm để quét đủ bề mặt.
                     </p>
@@ -451,7 +461,7 @@
                     </div>
                     <div class="p-2.5 flex gap-2 bg-slate-950">
                         <button type="button" onclick="captureOwnerArtifactWithAI()" class="flex-1 py-2 px-3 rounded-xl bg-accent text-white text-[11px] font-extrabold active:scale-95">
-                            📸 Chụp Hiện vật / Tủ kính (AI)
+                            📸 Đăng ký hiện vật / Tủ kính (AI)
                         </button>
                         <label class="py-2 px-3 rounded-xl bg-slate-800 text-slate-200 text-[11px] font-bold border border-slate-700 cursor-pointer">
                             🖼️ Tải ảnh
@@ -514,7 +524,7 @@
                     <div class="flex items-center justify-between gap-2">
                         <div>
                             <h3 class="text-xs font-extrabold text-navy">Mini-Map Vector 2D (Hệ tọa độ mét)</h3>
-                            <span class="text-[9px] font-semibold text-slate-400">Lưới phụ 0.25m • Lưới chính 1m • Kéo để di chuyển</span>
+                            <span id="miniGridLabel" class="text-[9px] font-semibold text-slate-400">Lưới tự đổi theo mức thu phóng</span>
                         </div>
                         <div class="flex items-center gap-1 shrink-0">
                             <button type="button" onclick="zoomMiniMap(2)" class="w-7 h-7 rounded-lg bg-slate-100 text-navy font-extrabold text-xs active:scale-95">+</button>
@@ -522,7 +532,7 @@
                             <button type="button" onclick="centerMiniMap()" class="px-2 h-7 rounded-lg bg-navy text-white font-bold text-[10px] active:scale-95">Căn giữa</button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-1.5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         <div class="space-y-1">
                             <p class="text-[9px] font-extrabold text-slate-500 text-center">Mặt bằng 2D</p>
                             <div class="w-full h-52 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden relative touch-none">
@@ -530,8 +540,8 @@
                             </div>
                         </div>
                         <div class="space-y-1">
-                            <p class="text-[9px] font-extrabold text-indigo-700 text-center">Xem trước 3D trực tiếp</p>
-                            <div id="ownerLive3dPreviewBox" class="w-full h-52 rounded-xl bg-slate-200 border border-indigo-200 overflow-hidden relative touch-none"></div>
+                            <p class="text-[9px] font-extrabold text-indigo-700 text-center">Xem trước 3D trực tiếp · Kéo cần để đi bộ</p>
+                            <div id="ownerLive3dPreviewBox" class="w-full h-72 rounded-xl bg-slate-200 border border-indigo-200 overflow-hidden relative touch-none"></div>
                         </div>
                     </div>
                     <!-- CHỈNH NHANH TƯỜNG ĐANG CHỌN (NHÌN TRỰC TIẾP TRÊN MINI-MAP) -->
@@ -587,7 +597,7 @@
                     <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
                         <div class="flex items-center justify-between">
                             <span class="text-[10px] font-extrabold text-navy">📐 Chỉnh tỷ lệ thực 1:1 (mét) &amp; Vị trí phòng</span>
-                            <select id="editLayoutFloorSelect" onchange="renderVectorMiniMap()" class="px-2 py-0.5 rounded-lg bg-white border border-slate-300 text-[10px] font-bold text-navy">
+                            <select id="editLayoutFloorSelect" onchange="syncScanFloor()" class="px-2 py-0.5 rounded-lg bg-white border border-slate-300 text-[10px] font-bold text-navy">
                                 <option value="1">Tầng 1</option>
                                 <option value="2">Tầng 2</option>
                             </select>
@@ -682,9 +692,15 @@
                         <textarea id="artUseInput" rows="2" placeholder="Công dụng chính..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-600">3. Câu chuyện lịch sử</label>
+                        <label class="text-[10px] font-bold text-slate-600">3. Niên đại / Thời kỳ *</label>
+                        <input id="artPeriodInput" required maxlength="200" placeholder="Chưa xác định nếu chưa có căn cứ" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                    </div><div>
+                        <label class="text-[10px] font-bold text-slate-600">4. Câu chuyện lịch sử / Nguồn thông tin</label>
                         <textarea id="artStoryInput" rows="2" placeholder="Câu chuyện thú vị..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs"></textarea>
                     </div>
+                    <label class="block text-[10px] font-bold text-slate-600">Ảnh mẫu để khách quét (không bắt buộc nếu chỉ hiển thị bản đồ)<input id="artPhotoInput" type="file" accept="image/*" class="block w-full mt-1 text-xs"></label>
+                    <p id="manualEditStatus" class="text-[11px] text-slate-600"></p>
+                    <button type="button" onclick="resetManualArtifactEditor()" class="w-full py-2 rounded-xl bg-slate-100 text-xs font-bold">Hủy sửa / Thêm mới</button>
                     <button type="submit" class="w-full py-2.5 rounded-xl bg-navy text-white text-xs font-extrabold shadow active:scale-95">
                         💾 Lưu Hiện vật lên Bản đồ 3D
                     </button>
@@ -723,6 +739,7 @@
                     </div>
                 </div>
 
+                <div class="bg-white rounded-2xl p-3 border border-slate-200 space-y-2"><h3 class="text-xs font-extrabold text-navy">Công bố danh mục cho thiết bị khách</h3><p class="text-[11px] text-slate-600">Xuất museum-catalog.json và triển khai cạnh index.html trên Netlify. Khách mới tự tải danh mục; thiết bị đã lưu dữ liệu cần nhập bản mới thủ công.</p><button type="button" onclick="exportAllDataJSON(true)" class="w-full py-2 rounded-xl bg-navy text-white text-xs font-bold">Xuất danh mục công bố</button></div>
                 <!-- Danh sách Tủ kính 3D -->
                 <div class="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-sm space-y-2">
                     <h3 class="text-xs font-extrabold text-navy">Tủ kính 3D đã nhận diện (<span id="displayCaseCount">0</span>)</h3>
@@ -773,12 +790,13 @@
             </div>
         </div>
 
-        <div id="aiConsentModal" class="hidden absolute inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-5">
+        <div id="aiConsentModal" class="hidden absolute inset-0 z-[55] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-5">
             <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-3">
                 <h3 class="text-sm font-extrabold text-navy">🛡️ Xác nhận gửi ảnh tới dịch vụ AI</h3>
                 <p class="text-xs text-slate-600 leading-relaxed">
-                    Ảnh hiện vật vừa chụp sẽ được gửi an toàn qua <strong>Netlify Function</strong> đến dịch vụ AI thị giác để nhận diện tên hiện vật và kiểm tra tủ kính. Ứng dụng không tự động gửi ảnh nếu bạn chưa đồng ý.
+                    Ảnh hiện vật vừa chụp sẽ được gửi qua <strong>Netlify Function</strong> đến dịch vụ AI thị giác để nhận diện tên hiện vật và kiểm tra tủ kính. Ứng dụng không tự động gửi ảnh nếu bạn chưa đồng ý.
                 </p>
+                    <p class="text-xs text-slate-600">Chủ sở hữu: ảnh và tên mẫu có thể được gửi để gợi ý tên. Khách: ảnh quét và ảnh mẫu hiện vật đã đăng ký được gửi để đối chiếu. Không gửi tọa độ hay nội dung thuyết minh.</p>
                 <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 cursor-pointer">
                     <input type="checkbox" id="rememberAiConsentCheck" class="accent-navy rounded">
                     <span>Ghi nhớ đồng ý trong phiên làm việc này</span>
@@ -790,10 +808,17 @@
             </div>
         </div>
 
+        <div id="visitorMatchModal" class="hidden absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="bg-white w-full max-w-sm rounded-3xl p-4 space-y-3 shadow-xl">
+            <div class="flex items-center justify-between"><h3 class="text-sm font-extrabold text-navy">Tra cứu hiện vật đã đăng ký</h3><button type="button" onclick="closeVisitorMatch()" class="px-3 py-1 rounded-lg bg-slate-100 text-xs font-bold">Đóng</button></div>
+            <img id="visitorMatchImage" alt="Ảnh vừa quét" class="w-full h-40 object-contain bg-slate-100 rounded-xl">
+            <p id="visitorMatchStatus" role="status" aria-live="polite" class="text-xs text-slate-700 leading-relaxed"></p>
+            <button type="button" onclick="closeVisitorMatch();switchVisitorTab('artifacts')" class="w-full py-2 rounded-xl bg-slate-100 text-navy text-xs font-bold">Xem danh mục hiện vật</button>
+          </div></div>
         <div id="aiConfirmModal" class="hidden absolute inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
             <div class="bg-white w-full max-w-sm max-h-[88dvh] overflow-y-auto rounded-3xl p-4 shadow-2xl space-y-3">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-extrabold text-navy">🤖 Kết quả nhận diện AI</h3>
+                    <h3 class="text-sm font-extrabold text-navy">🤖 Đăng ký hiện vật (Chủ sở hữu)</h3>
                     <button type="button" onclick="closeAiConfirmModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-500 font-bold text-xs">✕</button>
                 </div>
 
@@ -823,6 +848,14 @@
                         <input type="text" id="aiConfirmNameInput" placeholder="Nhập tên hiện vật..." class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-bold text-navy">
                     </div>
 
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-extrabold text-navy">Nội dung chính thức cho khách tham quan</p>
+                        <p class="text-[10px] text-slate-500">Kiểm tra thông tin trước khi lưu; nếu chưa rõ niên đại, nhập “Chưa xác định”.</p>
+                        <label class="block text-[10px] font-bold text-slate-600">Mô tả / Đây là vật gì? *<textarea id="aiWhatInput" rows="2" maxlength="1000" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs"></textarea></label>
+                        <label class="block text-[10px] font-bold text-slate-600">Công dụng *<textarea id="aiUseInput" rows="2" maxlength="1000" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs"></textarea></label>
+                        <label class="block text-[10px] font-bold text-slate-600">Niên đại / Thời kỳ *<input id="aiPeriodInput" maxlength="200" placeholder="VD: Thế kỷ XVII / Chưa xác định" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs"></label>
+                        <label class="block text-[10px] font-bold text-slate-600">Câu chuyện / Nguồn thông tin<textarea id="aiStoryInput" rows="2" maxlength="2000" class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs"></textarea></label>
+                    </div>
                     <div id="aiDisplayCaseBox" class="p-2.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[11px] font-extrabold text-navy">🪟 Kiểm tra Tủ kính trưng bày</span>
@@ -855,6 +888,7 @@
                     <button type="button" onclick="closeArtifactDetail()" class="w-8 h-8 rounded-xl bg-white/15 text-white font-bold text-xs">✕</button>
                 </div>
                 <div class="overflow-y-auto p-3.5 space-y-3">
+                    <p id="detailMatchNote" class="hidden text-[11px] rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-emerald-800"></p>
                     <div class="relative w-full h-44 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
                         <div id="detail3dCanvas" class="w-full h-full"></div>
                         <img id="detailOriginalImg" src="" alt="Ảnh hiện vật" class="hidden absolute inset-0 w-full h-full object-cover">
@@ -865,7 +899,7 @@
 
                     <div class="flex gap-2">
                         <button type="button" onclick="narrateCurrentDetail()" class="flex-1 py-2.5 rounded-xl bg-accent text-white text-xs font-extrabold shadow active:scale-95">
-                            🔊 Nghe thuyết minh AI
+                            🔊 Nghe / Đọc lại thuyết minh
                         </button>
                         <button type="button" onclick="navigateToCurrentDetail()" class="px-4 py-2.5 rounded-xl bg-navgreen text-white text-xs font-extrabold shadow active:scale-95">
                             🧭 Chỉ đường
@@ -882,7 +916,10 @@
                             <p id="detailUse" class="text-slate-700 mt-0.5 leading-relaxed"></p>
                         </div>
                         <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-                            <p class="text-[10px] font-extrabold text-navy uppercase">3. Câu chuyện lịch sử</p>
+                            <p class="text-[10px] font-extrabold text-navy uppercase">3. Niên đại / Thời kỳ</p>
+                            <p id="detailPeriod" class="text-slate-700 mt-0.5 leading-relaxed"></p>
+                        </div><div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                            <p class="text-[10px] font-extrabold text-navy uppercase">4. Câu chuyện lịch sử</p>
                             <p id="detailStory" class="text-slate-700 mt-0.5 leading-relaxed"></p>
                         </div>
                     </div>
@@ -981,7 +1018,7 @@
         let pendingAiArtifactDraft = null;
 
         let audioUnlocked = false;
-        let voiceEngine = 'cloud';
+        let voiceEngine = 'webspeech';
         let currentAudioEl = null;
 
         let currentDetailArtifact = null;
@@ -1009,10 +1046,11 @@
             if (w.start && w.end) {
                 const dx = w.end.x - w.start.x;
                 const dz = w.end.z - w.start.z;
-                const len = Math.max(0.2, Math.hypot(dx, dz));
+                const len = Math.hypot(dx, dz);
+                if (![w.start.x,w.start.z,w.end.x,w.end.z].every(v => Number.isFinite(Number(v))) || !Number.isFinite(len) || len < 0.2) return null;
                 const dirX = dx / len;
                 const dirZ = dz / len;
-                const h = Number(w.height) || 2.6;
+                const h = Math.max(0.2, Math.min(12, Number(w.height) || 2.6));
                 const y0 = Number(w.start.y) || 0;
                 return {
                     id: w.id || ('wall-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
@@ -1023,7 +1061,7 @@
                     direction: { x: dirX, z: dirZ },
                     normal: { x: -dirZ, z: dirX },
                     angle: Math.atan2(dz, dx),
-                    vertices: w.vertices || [
+                    vertices: [
                         { x: w.start.x, y: y0, z: w.start.z },
                         { x: w.end.x, y: y0, z: w.end.z },
                         { x: w.end.x, y: y0 + h, z: w.end.z },
@@ -1196,7 +1234,7 @@
          * ===================================================================== */
         const WALL_MERGE_ANGLE_RAD = (6 * Math.PI) / 180;
         const WALL_MERGE_PERP_DIST = 0.14;
-        const WALL_MERGE_ENDPOINT_GAP = 0.25;
+        const WALL_MERGE_ENDPOINT_GAP = 0.12;
         const WALL_CORNER_SNAP_DIST = 0.18;
 
         function angleDiffModPi(a, b) {
@@ -1218,29 +1256,15 @@
             const candidate = normalizeWallRecord(rawSegment);
             if (!candidate || candidate.length < 0.25) return { status: 'ignored', wall: null };
 
-            // 1. Ưu tiên planeId
-            if (candidate.planeId) {
-                const existingIdx = scannedWalls.findIndex(w => (w.planeId || w.xrPlaneKey) === candidate.planeId && w.floor === candidate.floor);
-                if (existingIdx !== -1) {
-                    const prev = scannedWalls[existingIdx];
-                    if (candidate.confidence >= (prev.confidence || 0) || candidate.length > prev.length) {
-                        const history = Array.isArray(prev.rawHistory) ? prev.rawHistory.slice(-10) : [];
-                        history.push({ start: prev.start, end: prev.end, length: prev.length, updatedAt: prev.updatedAt });
-                        candidate.id = prev.id;
-                        candidate.rawHistory = history;
-                        scannedWalls[existingIdx] = candidate;
-                        snapCornersForWall(candidate);
-                        saveScannedMapLocal();
-                        return { status: 'updated', wall: candidate };
-                    }
-                    return { status: 'kept', wall: prev };
-                }
-            }
+            // Plane identity is a hint, not permission to overwrite a larger wall.
+            const samePlane = candidate.planeId && scannedWalls.find(w => w.floor === candidate.floor && w.planeId === candidate.planeId);
+            if (samePlane && (angleDiffModPi(samePlane.angle,candidate.angle)>WALL_MERGE_ANGLE_RAD || pointToLinePerpDist(candidate.start.x,candidate.start.z,samePlane)>WALL_MERGE_PERP_DIST || pointToLinePerpDist(candidate.end.x,candidate.end.z,samePlane)>WALL_MERGE_PERP_DIST)) return {status:'kept',wall:samePlane};
 
             // 2. Ghép đồng phẳng (góc <= 6 độ, lệch vuông góc <= 0.14m, hở đầu mút <= 0.25m)
             for (let i = 0; i < scannedWalls.length; i++) {
                 const w = scannedWalls[i];
                 if (w.floor !== candidate.floor) continue;
+
                 const angDiff = angleDiffModPi(w.angle, candidate.angle);
                 if (angDiff <= WALL_MERGE_ANGLE_RAD) {
                     const dStart = pointToLinePerpDist(candidate.start.x, candidate.start.z, w);
@@ -1252,8 +1276,10 @@
                         const cMax = Math.max(t1, t2);
                         const gap = Math.max(0, cMin - w.length, -cMax);
                         if (gap <= WALL_MERGE_ENDPOINT_GAP) {
+                            if (candidate.source==='webxr_measured' && w.source!=='webxr_measured') return {status:'kept',wall:w};
                             const newMin = Math.min(0, cMin);
                             const newMax = Math.max(w.length, cMax);
+                            if (newMax-newMin-w.length < 0.035 && candidate.height-w.height < 0.08) return {status:'kept',wall:w};
                             const mergedStart = {
                                 x: w.start.x + w.direction.x * newMin,
                                 y: Math.min(w.start.y, candidate.start.y),
@@ -1283,7 +1309,7 @@
                             });
                             scannedWalls[i] = merged;
                             snapCornersForWall(merged);
-                            saveScannedMapLocal();
+                            if (!xrSession) saveScannedMapLocal();
                             return { status: merged.uncertainJoint ? 'merged_uncertain' : 'merged', wall: merged };
                         }
                     }
@@ -1291,41 +1317,37 @@
             }
 
             // 3. Khác hướng: chỉ bắt dính góc chữ L / chữ T
+            if(samePlane) return {status:'kept',wall:samePlane};
             snapCornersForWall(candidate);
             scannedWalls.push(candidate);
-            saveScannedMapLocal();
+            if (!xrSession) saveScannedMapLocal();
             return { status: 'added', wall: candidate };
         }
 
         function snapCornersForWall(targetWall) {
             for (const other of scannedWalls) {
-                if (other.id === targetWall.id || other.floor !== targetWall.floor) continue;
-                if (angleDiffModPi(targetWall.angle, other.angle) < WALL_MERGE_ANGLE_RAD) continue;
-
-                const endpoints = [targetWall.start, targetWall.end];
-                const otherPts = [other.start, other.end];
-                for (const ep of endpoints) {
-                    let snapped = false;
-                    for (const op of otherPts) {
-                        const dist = Math.hypot(ep.x - op.x, ep.z - op.z);
-                        if (dist > 0.01 && dist <= WALL_CORNER_SNAP_DIST) {
-                            ep.x = op.x;
-                            ep.z = op.z;
-                            snapped = true;
-                            break;
-                        }
-                    }
-                    if (!snapped) {
-                        const perp = pointToLinePerpDist(ep.x, ep.z, other);
-                        const proj = projectPointOnWallAxis(ep.x, ep.z, other);
-                        if (perp > 0.01 && perp <= WALL_CORNER_SNAP_DIST && proj >= 0 && proj <= other.length) {
-                            ep.x = other.start.x + other.direction.x * proj;
-                            ep.z = other.start.z + other.direction.z * proj;
-                        }
-                    }
+                if (other.id===targetWall.id || other.floor!==targetWall.floor) continue;
+                const ax=targetWall.direction.x, az=targetWall.direction.z, bx=other.direction.x,bz=other.direction.z;
+                const det=ax*bz-az*bx;
+                if(Math.abs(det)<0.35) continue;
+                const dx=other.start.x-targetWall.start.x,dz=other.start.z-targetWall.start.z;
+                const t=(dx*bz-dz*bx)/det,u=(dx*az-dz*ax)/det;
+                const x=targetWall.start.x+t*ax,z=targetWall.start.z+t*az;
+                const ea=Math.abs(t)<Math.abs(t-targetWall.length)?'start':'end';
+                const eb=Math.abs(u)<Math.abs(u-other.length)?'start':'end';
+                const da=Math.hypot(x-targetWall[ea].x,z-targetWall[ea].z),db=Math.hypot(x-other[eb].x,z-other[eb].z);
+                if(da>WALL_CORNER_SNAP_DIST || (db>WALL_CORNER_SNAP_DIST && (u<0||u>other.length))) continue;
+                // Never move an already placed manual wall during automatic AR scanning.
+                if(db<=WALL_CORNER_SNAP_DIST && targetWall.source==='webxr_measured' && other.source!=='webxr_measured' && db>0.001) continue;
+                const next=normalizeWallRecord({...targetWall,[ea]:{...targetWall[ea],x,z}});
+                if(!next) continue;
+                if(db<=WALL_CORNER_SNAP_DIST) {
+                    const nextOther=normalizeWallRecord({...other,[eb]:{...other[eb],x,z}});
+                    if(!nextOther) continue;
+                    Object.assign(other,nextOther);
                 }
+                Object.assign(targetWall,next);
             }
-            Object.assign(targetWall, normalizeWallRecord(targetWall));
         }
 
         /* =====================================================================
@@ -1341,17 +1363,27 @@
         let xrLastCameraYaw = 0;
 
         let arCalibration = { calibrated: false, originMapX: 0, originMapZ: 0, originArX: 0, originArZ: 0, yawOffset: 0 };
-        try {
-            const savedCal = localStorage.getItem('btdn_ar_calibration');
-            if (savedCal) arCalibration = JSON.parse(savedCal);
-        } catch (e) {}
+        // XR reference spaces are session-local; never reuse a transform from an old session.
+        let xrSessionFloor = 1, xrGL = null, xrOpening = false;
+        let xrLastUI = -Infinity, xrLastScan = -Infinity, xrDirty = false;
+        let xrAnchor = null, xrPlaneAvailable = false;
+        let xrLastMerge = 'Sẵn sàng';
+        function setXRText(id, text) { const e = document.getElementById(id); if(e) e.textContent = text; }
+        function currentEditFloor() { return Number(document.getElementById('editLayoutFloorSelect')?.value) || 1; }
+        function syncScanFloor() {
+            if (xrSession) { document.getElementById('editLayoutFloorSelect').value = String(xrSessionFloor); showToast('Dừng phiên AR trước khi đổi tầng.'); return; }
+            // Bộ chọn tầng chỉ dùng để chỉnh sửa mặt bằng, không dịch chuyển nhân vật.
+            setXRText('ownerFloorVal', ownerPos.floor);
+            renderVectorMiniMap();
+        }
+
 
         function updateCalibrationStatusUI() {
             const el = document.getElementById('arCalibrationStatus');
             if (!el) return;
             if (arCalibration.calibrated) {
                 el.className = 'p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-900';
-                el.textContent = `✅ Đã hiệu chỉnh điểm gốc AR (${arCalibration.originMapX.toFixed(1)}m, ${arCalibration.originMapZ.toFixed(1)}m).`;
+                el.textContent = `✅ Đã đặt mốc tương đối AR (${arCalibration.originMapX.toFixed(1)}m, ${arCalibration.originMapZ.toFixed(1)}m).`;
             } else {
                 el.className = 'p-2 rounded-xl bg-amber-50/80 border border-amber-200 text-[10px] font-semibold text-amber-900';
                 el.textContent = '⚠️ Chưa hiệu chỉnh điểm gốc AR với bản đồ bảo tàng. Vị trí thực tế chưa được khóa.';
@@ -1370,15 +1402,18 @@
                 originMapZ: Number(mapZ) || 0,
                 originArX: xrLastCameraPos.x,
                 originArZ: xrLastCameraPos.z,
-                yawOffset: mapRad - xrLastCameraYaw
+                yawOffset: mapRad + xrLastCameraYaw
             };
-            try { localStorage.setItem('btdn_ar_calibration', JSON.stringify(arCalibration)); } catch (e) {}
+            // Calibration is deliberately kept in memory only.
             updateCalibrationStatusUI();
-            showToast('Đã hiệu chỉnh điểm gốc AR khớp với bản đồ bảo tàng.');
+            showToast('Đã đặt mốc tương đối AR theo vị trí và hướng đã chọn.');
             return true;
         }
 
         function calibrateAROriginFromUI() {
+            if (xrSession && arCalibration.calibrated && scannedWalls.some(w => w.floor === xrSessionFloor)) {
+                showToast('Dừng AR và bắt đầu lại tại một mốc đã biết để tránh lệch bản đồ.'); return;
+            }
             calibrateAROrigin(ownerPos.x, ownerPos.z, ownerPos.heading);
         }
 
@@ -1396,6 +1431,8 @@
 
         function analyzeWallPolygon(plane, poseMatrix) {
             const mat = new THREE.Matrix4().fromArray(poseMatrix);
+            const normalY = Math.abs(poseMatrix[5]); // local plane +Y is its normal
+            if (plane.orientation === 'horizontal' || normalY > 0.35) return null;
             const worldPts = [];
             for (const pt of plane.polygon) {
                 worldPts.push(new THREE.Vector3(pt.x, pt.y, pt.z).applyMatrix4(mat));
@@ -1427,8 +1464,8 @@
             });
 
             const length = maxProj - minProj;
-            const height = Math.max(0.5, Math.min(4.5, maxY - minY || 2.6));
-            if (length < 0.35) return null;
+            const height = maxY - minY;
+            if (length < 0.35 || height < 0.40 || !Number.isFinite(height)) return null;
 
             const startMap = arToMapPoint(meanX + dirX * minProj, meanZ + dirZ * minProj);
             const endMap = arToMapPoint(meanX + dirX * maxProj, meanZ + dirZ * maxProj);
@@ -1440,7 +1477,7 @@
                 height: Number(height.toFixed(2)),
                 angle: Math.atan2(endMap.z - startMap.z, endMap.x - startMap.x),
                 vertices: worldPts.map(p => ({ x: Number(p.x.toFixed(3)), y: Number(p.y.toFixed(3)), z: Number(p.z.toFixed(3)) })),
-                confidence: Math.min(0.95, 0.55 + worldPts.length * 0.04)
+                confidence: 0.7
             };
         }
 
@@ -1458,12 +1495,8 @@
 
         async function stopWebXRScan() {
             if (xrSession) {
-                try { await xrSession.end(); } catch (e) {}
-                xrSession = null;
+                try { await xrSession.end(); } catch (e) { showToast('Không thể kết thúc AR; hãy dùng nút đóng của hệ thống.'); }
             }
-            xrRefSpace = null;
-            xrHitTestSource = null;
-            updateWebXRButtonUI(false);
         }
 
         async function checkWebXRCapabilities() {
@@ -1507,149 +1540,154 @@
         }
 
         async function toggleWebXRScan() {
-            if (xrSession) {
-                await stopWebXRScan();
-                return;
-            }
-            if (!xrCapabilities.immersiveAR) {
-                showToast('Thiết bị không hỗ trợ WebXR AR. Vui lòng dùng Chế độ Quét hỗ trợ thủ công.');
-                return;
-            }
-
-            const statusEl = document.getElementById('xrPlaneStatusText');
+            if (xrOpening) return;
+            if (xrSession) { await stopWebXRScan(); return; }
+            if (!xrCapabilities.immersiveAR) { showToast('WebXR không khả dụng. Dùng chế độ đo thủ công.'); return; }
+            const floor = currentEditFloor();
+            const ax=document.getElementById('scanAnchorX').value, az=document.getElementById('scanAnchorZ').value, ah=document.getElementById('scanAnchorHeading').value;
+            if([ax,az,ah].some(v=>v.trim()!==''&&!Number.isFinite(Number(v)))) {showToast('Mốc tọa độ không hợp lệ.');return;}
+            if(ax.trim()!=='') ownerPos.x=Number(ax);
+            if(az.trim()!=='') ownerPos.z=Number(az);
+            if(ah.trim()!=='') ownerPos.heading=((Number(ah)%360)+360)%360;
+            const existing = scannedWalls.some(w => w.floor === floor);
+            if (existing && !confirm('Tầng này đã có bản đồ. Hãy đặt camera tại đúng vị trí người quét trên minimap, hướng theo mũi tên hiện tại, rồi xác nhận bắt đầu. Nếu không biết mốc, hãy hủy để tránh lệch bản đồ.')) return;
+            xrOpening = true;
+            xrSessionFloor = floor;
+            ownerPos.floor = floor;ownerPos.stairId=null;
+            xrAnchor = { x: ownerPos.x, z: ownerPos.z, heading: ownerPos.heading };
+            arCalibration.calibrated = false;
+            xrLastCameraPos = null; xrLastScan = -Infinity; xrLastUI = -Infinity;
+            xrDirty = false; xrPlaneAvailable = false; xrLastMerge = 'Sẵn sàng';
+            updateCalibrationStatusUI();
+            let session = null;
             try {
                 await CameraManager.stop();
-                xrSession = await navigator.xr.requestSession('immersive-ar', {
+                session = await navigator.xr.requestSession('immersive-ar', {
                     requiredFeatures: ['local'],
-                    optionalFeatures: ['plane-detection', 'hit-test', 'anchors', 'dom-overlay'],
+                    optionalFeatures: ['plane-detection', 'hit-test', 'dom-overlay'],
                     domOverlay: { root: document.getElementById('appShell') }
                 });
+                xrSession = session;
+                session.addEventListener('end', () => {
+                    if (xrSession !== session) return;
+                    if (xrDirty) { saveScannedMapLocal(); rebuildScannedMap3D(); renderScannedWallsList(); }
+                    try { xrHitTestSource?.cancel(); } catch(e) {}
+                    xrSession = null; xrRefSpace = null; xrViewerSpace = null; xrHitTestSource = null;
+                    xrLastCameraPos = null; xrGL = null; xrPlaneStability.clear();
+                    arCalibration.calibrated = false; updateCalibrationStatusUI();
+                    updateWebXRButtonUI(false); setXRText('xrHitDistanceVal', '-- m');
+                    setXRText('xrPlaneStatusText', 'Đã kết thúc phiên AR. Các kích thước là phần bề mặt đã quan sát.');
+                    xrOpening=false;
+                    restartCurrentCamera();
+                }, {once: true});
                 xrPlaneStability.clear();
-
-                const enabledFeatures = xrSession.enabledFeatures ? Array.from(xrSession.enabledFeatures) : [];
-                xrCapabilities.hitTest = enabledFeatures.includes('hit-test');
-                xrCapabilities.planeDetection = enabledFeatures.includes('plane-detection');
-
-                if (!xrCapabilities.planeDetection) {
-                    document.getElementById('xrFallbackNotice').classList.remove('hidden');
-                    showToast('Trình duyệt không hỗ trợ plane-detection.');
-                }
-
+                const features = session.enabledFeatures ? Array.from(session.enabledFeatures) : [];
+                xrCapabilities.planeDetection = features.includes('plane-detection');
                 const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl', { xrCompatible: true });
-                await gl.makeXRCompatible();
-                xrSession.updateRenderState({ baseLayer: new XRWebGLLayer(xrSession, gl) });
-                xrRefSpace = await xrSession.requestReferenceSpace('local');
-                xrViewerSpace = await xrSession.requestReferenceSpace('viewer');
-
-                if (xrCapabilities.hitTest && xrSession.requestHitTestSource) {
-                    try { xrHitTestSource = await xrSession.requestHitTestSource({ space: xrViewerSpace }); } catch (e) {}
+                xrGL = canvas.getContext('webgl', { xrCompatible: true, alpha: true });
+                if (!xrGL) throw new Error('Không tạo được WebGL AR');
+                await xrGL.makeXRCompatible();
+                session.updateRenderState({ baseLayer: new XRWebGLLayer(session, xrGL, {alpha: true}) });
+                xrRefSpace = await session.requestReferenceSpace('local');
+                xrViewerSpace = await session.requestReferenceSpace('viewer');
+                if (session.requestHitTestSource) {
+                    try { xrHitTestSource = await session.requestHitTestSource({space: xrViewerSpace}); } catch(e) { xrHitTestSource = null; }
                 }
-
-                xrSession.addEventListener('end', () => {
-                    xrSession = null;
-                    xrRefSpace = null;
-                    xrHitTestSource = null;
-                    updateWebXRButtonUI(false);
-                    if (statusEl) statusEl.textContent = 'Trạng thái: Đã kết thúc phiên WebXR AR.';
-                });
-
+                xrCapabilities.hitTest = !!xrHitTestSource;
                 updateWebXRButtonUI(true);
-                if (statusEl) statusEl.textContent = `AR đã bật (HitTest: ${xrCapabilities.hitTest ? 'Có' : 'Không'} • Plane: ${xrCapabilities.planeDetection ? 'Có' : 'Không'}).`;
-                xrSession.requestAnimationFrame(onXRFrame);
-            } catch (err) {
-                xrSession = null;
+                setXRText('xrPlaneStatusText','Đang chờ định vị và mặt phẳng từ thiết bị...');
+                session.requestAnimationFrame(onXRFrame);
+            } catch(err) {
+                if (session) { try { await session.end(); } catch(e) {} }
+                xrSession = null; xrRefSpace = null; xrGL = null;
+                updateWebXRButtonUI(false);
                 document.getElementById('xrFallbackNotice').classList.remove('hidden');
-                if (statusEl) statusEl.textContent = 'Lỗi mở phiên WebXR AR: Chuyển sang chế độ thủ công.';
-                showToast('Không thể khởi động WebXR AR: ' + (err.message || 'Không hỗ trợ'));
+                setXRText('xrPlaneStatusText','Không mở được AR: ' + (err.message || 'Không hỗ trợ'));
+                xrOpening=false;
+                restartCurrentCamera();
+            } finally { xrOpening = false; }
+        }
+
+        // Distance to the actual observed wall segment in the camera's viewing direction.
+        function xrForwardWallDistance(pos, heading, walls) {
+            const rad = heading * Math.PI / 180, fx = Math.sin(rad), fz = -Math.cos(rad);
+            let best = Infinity;
+            for (const w of walls) {
+                const dx = w.end.x-w.start.x, dz = w.end.z-w.start.z;
+                const det = fx*dz-fz*dx;
+                if (Math.abs(det) < 1e-6) continue;
+                const ax=w.start.x-pos.x, az=w.start.z-pos.z;
+                const t=(ax*dz-az*dx)/det, u=(ax*fz-az*fx)/det;
+                if(t>0 && u>=0 && u<=1) best=Math.min(best,t);
             }
+            return Number.isFinite(best) ? best : null;
         }
 
         function onXRFrame(time, frame) {
-            if (!xrSession) return;
+            if (!xrSession || frame.session !== xrSession) return;
             xrSession.requestAnimationFrame(onXRFrame);
-
-            const viewerPose = frame.getViewerPose(xrRefSpace);
-            if (!viewerPose) return;
-
-            const t = viewerPose.transform.position;
-            const q = viewerPose.transform.orientation;
-            xrLastCameraPos = new THREE.Vector3(t.x, t.y, t.z);
-            const euler = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(q.x, q.y, q.z, q.w), 'YXZ');
-            xrLastCameraYaw = euler.y;
-
-            if (arCalibration.calibrated) {
-                const mapPos = arToMapPoint(t.x, t.z);
-                ownerPos.x = mapPos.x;
-                ownerPos.z = mapPos.z;
-                userPos.x = mapPos.x;
-                userPos.z = mapPos.z;
-                updateUserAvatar3D();
+            if (xrGL && xrSession.renderState.baseLayer) {
+                xrGL.bindFramebuffer(xrGL.FRAMEBUFFER, xrSession.renderState.baseLayer.framebuffer);
+                xrGL.clearColor(0,0,0,0); xrGL.clear(xrGL.COLOR_BUFFER_BIT | xrGL.DEPTH_BUFFER_BIT);
             }
-
-            let distStatus = 'Chưa phát hiện mặt phẳng';
-            if (xrHitTestSource) {
-                const hits = frame.getHitTestResults(xrHitTestSource);
-                if (hits.length > 0) {
-                    const hitPose = hits[0].getPose(xrRefSpace);
-                    if (hitPose) {
-                        const hp = hitPose.transform.position;
-                        const dist = xrLastCameraPos.distanceTo(new THREE.Vector3(hp.x, hp.y, hp.z));
-                        document.getElementById('xrHitDistanceVal').textContent = dist.toFixed(2) + ' m';
-                        if (dist < 0.7) distStatus = `Camera đang ở gần tường (${dist.toFixed(2)} m)`;
-                        else if (dist <= 2.8) distStatus = `Khoảng cách phù hợp để quét (${dist.toFixed(2)} m)`;
-                        else distStatus = `Camera đang quá xa (${dist.toFixed(2)} m)`;
+            const viewerPose = frame.getViewerPose(xrRefSpace);
+            if (!viewerPose) { if(time-xrLastUI>500) { setXRText('xrPlaneStatusText','Mất theo dõi vị trí — chưa lưu phép đo mới.'); xrLastUI=time; } return; }
+            const t=viewerPose.transform.position, q=viewerPose.transform.orientation;
+            xrLastCameraPos = new THREE.Vector3(t.x,t.y,t.z);
+            xrLastCameraYaw = new THREE.Euler().setFromQuaternion(new THREE.Quaternion(q.x,q.y,q.z,q.w),'YXZ').y;
+            if (!arCalibration.calibrated && xrAnchor) calibrateAROrigin(xrAnchor.x,xrAnchor.z,xrAnchor.heading);
+            const mapPos = arToMapPoint(t.x,t.z);
+            ownerPos.x=mapPos.x; ownerPos.z=mapPos.z; ownerPos.floor=xrSessionFloor;
+            ownerPos.heading=((arCalibration.yawOffset-xrLastCameraYaw)*180/Math.PI+360)%360;
+            ownerPos.stairId=null; // AR là phiên định vị thực, không thay đổi vị trí của khách.
+            if (time-xrLastScan<250) return;
+            xrLastScan=time;
+            let detected;
+            try { detected=frame.detectedPlanes; } catch(e) { detected=null; }
+            xrPlaneAvailable = detected != null;
+            const visibleWalls=[];
+            let verticalCount=0;
+            if (detected) {
+                for(const plane of detected) {
+                    if(plane.orientation==='horizontal' || !plane.polygon || plane.polygon.length<3) continue;
+                    const pose=frame.getPose(plane.planeSpace,xrRefSpace);
+                    if(!pose) continue;
+                    const measured=analyzeWallPolygon(plane,pose.transform.matrix);
+                    if(!measured) continue;
+                    verticalCount++; visibleWalls.push(measured);
+                    let rec=xrPlaneStability.get(plane);
+                    if(!rec) { rec={key:'xr-'+Date.now()+'-'+Math.random().toString(36).slice(2,9), stable:0, prev:null, saved:null}; xrPlaneStability.set(plane,rec); }
+                    const prev=rec.prev;
+                    const center=w=>({x:(w.start.x+w.end.x)/2,z:(w.start.z+w.end.z)/2});
+                    const a=center(measured), b=prev?center(prev):a;
+                    const stable=prev && Math.hypot(a.x-b.x,a.z-b.z)<0.14 && Math.abs(measured.length-prev.length)<0.18 && angleDiffModPi(measured.angle,prev.angle)<0.08;
+                    rec.stable=stable?rec.stable+1:1; rec.prev=measured;
+                    if(rec.stable<3) continue;
+                    // Only persist material changes; no 60fps storage/mesh rebuild.
+                    if(rec.saved) {
+                        const c=center(rec.saved);
+                        if(Math.hypot(a.x-c.x,a.z-c.z)<0.08 && Math.abs(measured.length-rec.saved.length)<0.10 && Math.abs(measured.height-rec.saved.height)<0.10 && angleDiffModPi(measured.angle,rec.saved.angle)<0.05) continue;
+                    }
+                    const res=upsertWallWithGeometryEngine({...measured,floor:xrSessionFloor,source:'webxr_measured',planeId:rec.key,label:'Tường AR (phần đã quan sát)'});
+                    if(res.wall) rec.saved=measured;
+                    if(['added','updated','merged','merged_uncertain'].includes(res.status)) {
+                        xrDirty=true; useScannedMapMode=true;
+                        xrLastMerge=res.status==='added'?'Đã lưu tường':res.status==='updated'?'Đã cập nhật':'Đã ghép đoạn';
+                        setXRText('xrLastWallMeasure', measured.length.toFixed(2)+' × '+measured.height.toFixed(2)+' m (phần quan sát)');
                     }
                 }
+                for(const key of xrPlaneStability.keys()) if(!detected.has(key)) xrPlaneStability.delete(key);
             }
-
-            const detected = frame.detectedPlanes;
-            let verticalCount = 0;
-            let lastMergeState = 'Đang quét...';
-
-            if (detected && detected.size > 0) {
-                if (distStatus === 'Chưa phát hiện mặt phẳng') distStatus = 'Đang phát hiện mặt phẳng';
-                detected.forEach((plane) => {
-                    if (plane.orientation !== 'vertical') return;
-                    verticalCount++;
-                    let rec = xrPlaneStability.get(plane);
-                    if (!rec) {
-                        rec = { key: 'xr-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), frames: 0 };
-                        xrPlaneStability.set(plane, rec);
-                    }
-                    rec.frames++;
-                    if (rec.frames >= 4 && plane.polygon && plane.polygon.length >= 3) {
-                        const pose = frame.getPose(plane.planeSpace, xrRefSpace);
-                        if (!pose) return;
-                        const measured = analyzeWallPolygon(plane, pose.transform.matrix);
-                        if (measured) {
-                            const res = upsertWallWithGeometryEngine({
-                                ...measured,
-                                floor: ownerPos.floor,
-                                source: 'webxr_measured',
-                                planeId: rec.key,
-                                label: 'Tường AR WebXR'
-                            });
-                            const deg = Math.round((measured.angle * 180) / Math.PI);
-                            document.getElementById('xrLastWallMeasure').textContent =
-                                `${measured.length}m × ${measured.height}m (${deg}°, ~${Math.round(measured.confidence * 100)}%)`;
-                            if (res.status === 'merged') lastMergeState = 'Đã ghép đồng phẳng';
-                            else if (res.status === 'merged_uncertain') lastMergeState = 'Nối chưa chắc chắn';
-                            else if (res.status === 'added') lastMergeState = 'Đã thêm tường mới';
-                            else if (res.status === 'updated') lastMergeState = 'Đã cập nhật kích thước';
-                        }
-                    }
-                });
-            }
-
-            document.getElementById('xrPlaneCount').textContent = String(verticalCount);
-            document.getElementById('savedWallCount').textContent = String(scannedWalls.length);
-            document.getElementById('wallMergeStatus').textContent = lastMergeState;
-            document.getElementById('xrPlaneStatusText').textContent = `Trạng thái: ${distStatus}`;
-
-            renderVectorMiniMap();
-            renderScannedWallsList();
-            rebuildScannedMap3D();
+            const distance=xrForwardWallDistance(ownerPos,ownerPos.heading,visibleWalls);
+            setXRText('xrHitDistanceVal',distance===null?'-- m':distance.toFixed(2)+' m');
+            setXRText('xrPlaneCount',verticalCount); setXRText('savedWallCount',scannedWalls.length);
+            setXRText('ownerHeadingVal',Math.round(ownerPos.heading)+'°');
+            setXRText('ownerFloorVal',xrSessionFloor);
+            setXRText('wallMergeStatus',xrLastMerge);
+            setXRText('xrPlaneStatusText',!xrPlaneAvailable?'Thiết bị không cung cấp mặt phẳng AR; chưa thể tự đo chiều dài.':distance===null?'Chưa có tường trong hướng nhìn; quét chậm sang hai đầu tường.':'Có mặt phẳng đứng phía trước • '+distance.toFixed(2)+' m (ước lượng).');
+            document.getElementById('xrFallbackNotice').classList.toggle('hidden',xrPlaneAvailable);
+            updateUserAvatar3D(); renderVectorMiniMap();
+            if(xrDirty && time-xrLastUI>=750) { saveScannedMapLocal(); renderScannedWallsList(); rebuildScannedMap3D(); xrDirty=false; xrLastUI=time; }
         }
 
         /* =====================================================================
@@ -1710,12 +1748,7 @@
                     const step = 0.65;
                     const nx = userPos.x + Math.sin(rad) * step;
                     const nz = userPos.z - Math.cos(rad) * step;
-                    if (typeof isBlockedByObstacle === 'function' && isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
-                        return;
-                    }
-                    userPos.x = nx;
-                    userPos.z = nz;
-                    updateUserAvatar3D();
+                    moveWalker(userPos,nx,nz);
                 }
             }
         }
@@ -1729,8 +1762,7 @@
 
         function ownerStepForward() {
             const rad = (ownerPos.heading * Math.PI) / 180;
-            ownerPos.x += Math.sin(rad) * stepLengthMeters;
-            ownerPos.z -= Math.cos(rad) * stepLengthMeters;
+            if(!moveWalker(ownerPos,ownerPos.x+Math.sin(rad)*stepLengthMeters,ownerPos.z-Math.cos(rad)*stepLengthMeters))return;
             stepCount++;
 
             const badge = document.getElementById('stepCountBadge');
@@ -1856,24 +1888,28 @@
         /* =====================================================================
          * 7. MINI-MAP VECTOR 2D (LƯỚI 0.25m & 1m, 12 px/m, ZOOM/PAN)
          * ===================================================================== */
-        const miniMapView = { scale: 12, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
+        const miniMapView = { scale: 28, offsetX: 0, offsetY: 0, dragging: false, lastX: 0, lastY: 0 };
 
         function zoomMiniMap(delta) {
-            miniMapView.scale = Math.max(6, Math.min(32, miniMapView.scale + delta));
+            const old = miniMapView.scale;
+            miniMapView.scale = Math.max(4, Math.min(400, old * (delta > 0 ? 1.3 : 1/1.3)));
+            miniMapView.offsetX *= miniMapView.scale / old;
+            miniMapView.offsetY *= miniMapView.scale / old;
             renderVectorMiniMap();
         }
 
         function centerMiniMap() {
-            miniMapView.offsetX = 0;
-            miniMapView.offsetY = 0;
-            if (scannedWalls.length > 0) {
-                let sumX = 0, sumZ = 0;
-                scannedWalls.forEach(w => {
-                    sumX += (w.start.x + w.end.x) / 2;
-                    sumZ += (w.start.z + w.end.z) / 2;
-                });
-                miniMapView.offsetX = -(sumX / scannedWalls.length - ownerPos.x) * miniMapView.scale;
-                miniMapView.offsetY = -(sumZ / scannedWalls.length - ownerPos.z) * miniMapView.scale;
+            const walls = scannedWalls.filter(w => w.floor===currentEditFloor());
+            miniMapView.offsetX=0; miniMapView.offsetY=0;
+            const canvas=document.getElementById('vectorMiniMapCanvas');
+            if(walls.length && canvas) {
+                const points=walls.flatMap(w=>[w.start,w.end]);
+                const xs=points.map(p=>p.x),zs=points.map(p=>p.z);
+                const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
+                const rect=canvas.getBoundingClientRect();
+                miniMapView.scale=Math.max(4,Math.min(150,(rect.width-28)/Math.max(1,x1-x0),(rect.height-28)/Math.max(1,z1-z0)));
+                miniMapView.offsetX=(ownerPos.x-(x0+x1)/2)*miniMapView.scale;
+                miniMapView.offsetY=(ownerPos.z-(z0+z1)/2)*miniMapView.scale;
             }
             renderVectorMiniMap();
         }
@@ -1983,12 +2019,12 @@
             if (!sel || !canvas || sel.value === 'pan') return false;
 
             const rect = canvas.getBoundingClientRect();
-            const mx = (clientX - rect.left) * (canvas.width / rect.width);
-            const my = (clientY - rect.top) * (canvas.height / rect.height);
+            const mx = clientX - rect.left;
+            const my = clientY - rect.top;
 
             const scale = miniMapView.scale;
-            const cx = canvas.width / 2 - ownerPos.x * scale + miniMapView.offsetX;
-            const cy = canvas.height / 2 - ownerPos.z * scale + miniMapView.offsetY;
+            const cx = rect.width / 2 - ownerPos.x * scale + miniMapView.offsetX;
+            const cy = rect.height / 2 - ownerPos.z * scale + miniMapView.offsetY;
 
             const worldX = Math.round(((mx - cx) / scale) * 20) / 20;
             const worldZ = Math.round(((my - cy) / scale) * 20) / 20;
@@ -2330,7 +2366,7 @@
                     position: { x: 1.5, y: 0, z: 0 },
                     width: 1.2,
                     depth: 2.2,
-                    height: 3.2,
+                    height: 3.5,
                     angle: 0,
                     artifactIds: []
                 });
@@ -2446,13 +2482,12 @@
             initMiniMapPanEvents();
 
             const rect = canvas.getBoundingClientRect();
-            const w = Math.max(240, rect.width || 320);
-            const h = Math.max(160, rect.height || 208);
-            if (canvas.width !== w || canvas.height !== h) {
-                canvas.width = w;
-                canvas.height = h;
-            }
-            const ctx = canvas.getContext('2d');
+            if (rect.width < 1 || rect.height < 1) return;
+            const w = rect.width, h = rect.height, dpr=Math.min(3,window.devicePixelRatio||1);
+            const pw=Math.round(w*dpr),ph=Math.round(h*dpr);
+            if(canvas.width!==pw||canvas.height!==ph){canvas.width=pw;canvas.height=ph;}
+            const ctx=canvas.getContext('2d');
+            ctx.setTransform(dpr,0,0,dpr,0,0);
             ctx.clearRect(0, 0, w, h);
 
             const scale = miniMapView.scale;
@@ -2460,7 +2495,9 @@
             const cy = h / 2 - ownerPos.z * scale + miniMapView.offsetY;
 
             // Lưới phụ 0.25m
-            const minorStep = 0.25 * scale;
+            const gridMeters=[0.05,0.1,0.25,0.5,1,2,5].find(m=>m*scale>=8)||5;
+            const minorStep=gridMeters*scale;
+            setXRText('miniGridLabel','Lưới '+gridMeters+' m • '+Math.round(scale)+' px/m • Kéo để xem');
             if (minorStep >= 3) {
                 ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
                 ctx.lineWidth = 0.5;
@@ -2473,7 +2510,7 @@
             }
 
             // Lưới chính 1m
-            const majorStep = 1 * scale;
+            const majorStep = gridMeters * 5 * scale;
             ctx.strokeStyle = 'rgba(100, 116, 139, 0.42)';
             ctx.lineWidth = 1;
             for (let x = ((cx % majorStep) + majorStep) % majorStep; x < w; x += majorStep) {
@@ -2488,7 +2525,7 @@
                 ctx.strokeStyle = '#38bdf8';
                 ctx.lineWidth = 2.5;
                 ctx.beginPath();
-                scannedPaths.forEach((p, idx) => {
+                scannedPaths.filter(p=>p.floor===currentEditFloor()).forEach((p, idx) => {
                     const px = cx + p.x * scale;
                     const py = cy + p.z * scale;
                     if (idx === 0) ctx.moveTo(px, py);
@@ -2552,7 +2589,7 @@
 
             // Vẽ tủ kính (có xoay theo góc thật & lọc theo tầng)
             displayCases.forEach(dc => {
-                if (dc.floor !== activeMapFloor) return;
+                if (dc.floor !== activeMapFloor && !(dc.isStair && activeMapFloor===2 && dc.floor===1)) return;
                 const dx = cx + dc.position.x * scale;
                 const dy = cy + dc.position.z * scale;
                 const w = (dc.width || 1.2) * scale;
@@ -2560,7 +2597,7 @@
 
                 ctx.save();
                 ctx.translate(dx, dy);
-                ctx.rotate(-(dc.angle || 0));
+                ctx.rotate(dc.angle || 0);
                 ctx.fillStyle = dc.isStair ? 'rgba(245, 158, 11, 0.35)' : 'rgba(56, 189, 248, 0.35)';
                 ctx.strokeStyle = dc.isStair ? '#d97706' : '#0284c7';
                 ctx.lineWidth = 2;
@@ -2577,6 +2614,7 @@
             });
 
             artifacts.forEach(art => {
+                if (art.floor !== activeMapFloor) return;
                 const ax = cx + (art.x || 0) * scale;
                 const ay = cy + (art.z || 0) * scale;
                 ctx.fillStyle = '#ea580c';
@@ -2598,6 +2636,9 @@
             ctx.closePath();
             ctx.fill();
             ctx.restore();
+            const rulerM=[5,2,1,0.5,0.25,0.1,0.05].find(m=>m*scale<=Math.min(85,w/3))||0.05;
+            ctx.fillStyle='#0f294a';ctx.fillRect(10,h-14,rulerM*scale,2);ctx.fillRect(10,h-17,1,8);ctx.fillRect(10+rulerM*scale,h-17,1,8);
+            ctx.font='10px sans-serif';ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(rulerM+' m',10,h-19);
         }
 
         /* =====================================================================
@@ -2641,6 +2682,7 @@
         };
 
         async function restartCurrentCamera() {
+            if (xrSession || xrOpening) return;
             if (currentAppMode === 'visitor' && currentVisitorTab === 'scan') {
                 await CameraManager.start(document.getElementById('visitorCameraVideo'));
             } else if (currentAppMode === 'owner' && currentOwnerSubTab === 'scan') {
@@ -2714,7 +2756,7 @@
             if (!file) return;
             try {
                 const dataUrl = await compressUploadedImage(file);
-                await openScannedPhotoArtifact(dataUrl);
+                await lookupVisitorArtifact(dataUrl);
             } catch (e) {
                 showToast('Không thể đọc ảnh đã chọn.');
             }
@@ -2722,19 +2764,24 @@
         }
 
         async function handleOwnerPhotoUpload(event) {
-            await handleVisitorPhotoUpload(event);
+            const file=event.target.files?.[0]; event.target.value='';
+            if(!file || currentAppMode!=='owner' || !isAdminUnlocked) return;
+            try { await openScannedPhotoArtifact(await compressUploadedImage(file)); }
+            catch(e){showToast('Không thể đọc ảnh đã chọn.');}
         }
 
         async function captureAndRecognize() {
+            if(currentAppMode!=='visitor') return;
             const dataUrl = captureVideoFrameDataUrl(document.getElementById('visitorCameraVideo'));
             if (!dataUrl) {
                 showToast('Camera chưa sẵn sàng. Hãy bấm Bật lại Camera hoặc chọn ảnh.');
                 return;
             }
-            await openScannedPhotoArtifact(dataUrl);
+            await lookupVisitorArtifact(dataUrl);
         }
 
         async function captureOwnerArtifactWithAI() {
+            if(currentAppMode!=='owner' || !isAdminUnlocked) return;
             const dataUrl = captureVideoFrameDataUrl(document.getElementById('ownerCameraVideo'));
             if (!dataUrl) {
                 showToast('Camera chưa sẵn sàng. Hãy bấm Bật lại Cam hoặc tải ảnh.');
@@ -2760,7 +2807,8 @@
                     body: JSON.stringify({
                         imageBase64,
                         mimeType,
-                        context: 'Bảo tàng Đà Nẵng - nhận diện vật dụng phổ thông, hiện vật lịch sử và tủ kính'
+                        context: 'Bảo tàng Đà Nẵng - nhận diện vật dụng phổ thông, hiện vật lịch sử và tủ kính',
+                        knownNames: artifacts.filter(a=>a.imageDataUrl&&a.name).slice(0,25).map(a=>String(a.name).slice(0,100))
                     }),
                     signal: controller.signal
                 });
@@ -2775,7 +2823,7 @@
                 let data;
                 try { data = await resp.json(); } catch { return { ok: false, reason: 'Lỗi dữ liệu: Máy chủ trả về JSON không hợp lệ.' }; }
 
-                if (!data || !data.name || !String(data.name).trim()) {
+                if (!data || typeof data.name !== "string" || !data.name.trim()) {
                     return { ok: false, reason: 'AI không nhận diện được vật thể rõ ràng trong ảnh.' };
                 }
                 if (typeof data.confidence === 'number' && data.confidence < 0.45) {
@@ -2789,13 +2837,102 @@
             }
         }
 
+
+        let visitorMatchToken=0, visitorMatchController=null;
+        function closeVisitorMatch(){
+            visitorMatchToken++;
+            if(visitorMatchController) visitorMatchController.abort();
+            visitorMatchController=null;
+            document.getElementById('visitorMatchModal').classList.add('hidden');
+            document.getElementById('visitorMatchImage').removeAttribute('src');
+        }
+        function registeredScanEntries(){
+            return artifacts.filter(a=>a && a.registeredForScan===true && a.imageDataUrl && a.name && a.what && a.use && a.period);
+        }
+        function toMatchImage(dataUrl){
+            return new Promise((resolve,reject)=>{
+                const img=new Image(); img.onload=()=>{try{
+                    const c=document.createElement('canvas'), r=Math.min(1,640/Math.max(img.width,img.height));
+                    c.width=Math.max(1,Math.round(img.width*r)); c.height=Math.max(1,Math.round(img.height*r));
+                    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+                    resolve(c.toDataURL('image/jpeg',0.72).split(',')[1]);
+                }catch(e){reject(e)}}; img.onerror=reject; img.src=dataUrl;
+            });
+        }
+        function showMatchedArtifact(id, exact){
+            if(currentAppMode!=='visitor'||!registeredScanEntries().some(a=>a.id===id)) return;
+            closeVisitorMatch();
+            openArtifactDetail(id);
+            const note=document.getElementById('detailMatchNote');
+            note.textContent=exact?'Khớp ảnh mẫu đã đăng ký. Nội dung do chủ sở hữu cung cấp.':'AI gợi ý khớp ảnh mẫu đã đăng ký. Hãy đối chiếu ảnh và nhãn hiện vật. Nội dung do chủ sở hữu cung cấp.';
+            note.classList.remove('hidden');
+            narrateCurrentDetail();
+        }
+        async function lookupVisitorArtifact(dataUrl){
+            if(currentAppMode!=='visitor'||visitorMatchController||pendingConsentResolve) return;
+            stopSpeaking();
+            const token=++visitorMatchToken;
+            const status=document.getElementById('visitorMatchStatus');
+            const modal=document.getElementById('visitorMatchModal');
+            document.getElementById('visitorMatchImage').src=dataUrl; modal.classList.remove('hidden');
+            const active=()=>token===visitorMatchToken&&currentAppMode==='visitor';
+            const entries=registeredScanEntries();
+            if(!entries.length){status.textContent='Chưa có ảnh mẫu và nội dung thuyết minh được chủ sở hữu đăng ký. Bạn có thể xem danh mục hiện vật.';return;}
+            const exact=entries.filter(a=>a.imageDataUrl===dataUrl);
+            if(exact.length===1){showMatchedArtifact(exact[0].id,true);return;}
+            if(exact.length>1){status.textContent='Có nhiều hiện vật dùng cùng một ảnh mẫu. Không thể xác định chính xác; hãy xem danh mục.';return;}
+            if(!navigator.onLine){status.textContent='Không có mạng để đối chiếu ảnh mới. Bạn vẫn có thể mở danh mục và nghe nội dung đã lưu.';return;}
+            status.textContent='Chờ xác nhận gửi ảnh quét và ảnh mẫu đến AI.';
+            const consent=await requestUserConsentForAI();
+            if(!active()) return;
+            if(!consent){status.textContent='Bạn đã từ chối gửi ảnh. Không có dữ liệu nào bị thêm hoặc sửa.';return;}
+            const controller=new AbortController(); visitorMatchController=controller;
+            let hits=[], ambiguous=false;
+            try{
+                const query=await toMatchImage(dataUrl);
+                for(let i=0;i<entries.length;i+=6){
+                    if(!active())return;
+                    status.textContent=`Đang đối chiếu ảnh mẫu (${Math.min(i+6,entries.length)}/${entries.length})…`;
+                    const group=entries.slice(i,i+6);
+                    const references=await Promise.all(group.map(async a=>({id:a.id,imageBase64:await toMatchImage(a.imageDataUrl)})));
+                    const timer=setTimeout(()=>controller.abort(),22000);
+                    let response;
+                    try{response=await fetch('/.netlify/functions/match-artifact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query,references}),signal:controller.signal});}
+                    finally{clearTimeout(timer);}
+                    if(!response.ok)throw new Error('HTTP '+response.status);
+                    const result=await response.json();
+                    if(result.status==='ambiguous') ambiguous=true;
+                    else if(result.status==='match' && group.some(a=>a.id===result.id)) hits.push(result.id);
+                    else if(result.status!=='none')throw new Error('Phản hồi đối chiếu không hợp lệ');
+                }
+                if(!active())return;
+                if(!ambiguous&&hits.length===1){showMatchedArtifact(hits[0],false);return;}
+                status.textContent=ambiguous||hits.length>1?'Có nhiều ảnh mẫu tương tự; chưa xác định được hiện vật. Hãy đổi góc chụp hoặc xem danh mục.':'Không tìm thấy hiện vật tương ứng trong dữ liệu đã đăng ký. Hãy đổi góc chụp hoặc xem danh mục.';
+            }catch(e){if(active())status.textContent='Chưa thể đối chiếu ảnh: dịch vụ AI không phản hồi hoặc chưa cấu hình. Hãy thử lại hoặc xem danh mục.';}
+            finally{if(visitorMatchController===controller)visitorMatchController=null;}
+        }
+
+        let aiScanBusy=false;
         async function openScannedPhotoArtifact(dataUrl) {
-            const consented = await requestUserConsentForAI();
-            if (!consented) {
-                showToast('Đã hủy gửi ảnh theo yêu cầu của bạn.');
+            if(currentAppMode!=='owner' || !isAdminUnlocked) return;
+            if(aiScanBusy || pendingAiArtifactDraft) {showToast('Hãy hoàn tất hoặc đóng lần nhận diện hiện tại.'); return;}
+            aiScanBusy=true;
+            try { await runScannedPhotoArtifact(dataUrl); } finally { aiScanBusy=false; }
+        }
+        async function runScannedPhotoArtifact(dataUrl) {
+            const known=artifacts.find(a=>a.imageDataUrl===dataUrl && a.name);
+            if(known) {
+                document.getElementById('aiPreviewImg').src=dataUrl;
+                document.getElementById('aiConfirmModal').classList.remove('hidden');
+                const basePos=currentAppMode==='owner'?ownerPos:userPos;
+                pendingAiArtifactDraft={imageDataUrl:dataUrl,x:basePos.x,z:basePos.z,floor:basePos.floor,knownId:known.id};
+                renderAiRecognitionResult({name:known.name,category:known.category,shortDescription:known.what,confidence:1,displayCase:{detected:!!known.displayCaseId,needsConfirmation:true,reason:'Thông tin đã lưu, hãy kiểm tra lại tủ kính.'}},'Ảnh trùng khớp dữ liệu đã xác nhận trên thiết bị, không phải kết quả AI mới.');
+                document.getElementById('aiConfidenceBadge').textContent='Ảnh đã lưu';
+                document.getElementById('aiHasDisplayCaseCheck').checked=!!known.displayCaseId;
                 return;
             }
-
+            const consented = await requestUserConsentForAI();
+            if(currentAppMode!=='owner' || !isAdminUnlocked) return;
             document.getElementById('aiPreviewImg').src = dataUrl;
             document.getElementById('aiLoadingBox').classList.remove('hidden');
             document.getElementById('aiResultBox').classList.add('hidden');
@@ -2811,7 +2948,10 @@
                 aiData: null
             };
 
+            const draft = pendingAiArtifactDraft;
+            if(!consented){showAiManualFallback('Không gửi ảnh đến AI. Hãy nhập nội dung chính thức thủ công.');return;}
             const res = await requestArtifactRecognition(dataUrl);
+            if (pendingAiArtifactDraft !== draft) return;
             if (!res.ok) showAiManualFallback(res.reason);
             else renderAiRecognitionResult(res.data, res.lowConfidence ? res.reason : null);
         }
@@ -2829,6 +2969,7 @@
             document.getElementById('aiConfidenceBadge').textContent = 'Độ tin cậy: --';
             document.getElementById('aiShortDescText').textContent = 'Bạn có thể nhập tên thủ công và xác nhận xem vật thể có nằm trong tủ kính không.';
             document.getElementById('aiConfirmNameInput').value = '';
+            fillOwnerNarrationFields({});
             document.getElementById('aiCaseBadge').textContent = 'Cần xác nhận';
             document.getElementById('aiCaseReasonText').textContent = 'Tích chọn bên dưới nếu hiện vật đặt trong tủ kính.';
             document.getElementById('aiHasDisplayCaseCheck').checked = false;
@@ -2847,6 +2988,8 @@
             }
 
             pendingAiArtifactDraft.aiData = data;
+            const prior=artifacts.find(a=>a.id===pendingAiArtifactDraft.knownId);
+            fillOwnerNarrationFields(prior || {what:data.shortDescription||''});
             const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
             const pct = Math.round(confidence * 100);
             const hasReliableName = Boolean(data.name && data.name.trim() && confidence >= 0.45);
@@ -2879,29 +3022,41 @@
                 caseReason.textContent = dc.reason || 'Ảnh chưa đủ rõ để phân biệt tủ kính với khung tranh/cửa kính. Vui lòng xác nhận.';
                 caseCheck.checked = false;
             } else {
-                caseBadge.textContent = 'Không có tủ kính';
+                caseBadge.textContent = 'Chưa thấy dấu hiệu tủ kính';
                 caseBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
-                caseReason.textContent = dc.reason || 'Hiện vật đặt ngoài trời hoặc không nằm trong tủ kính.';
+                caseReason.textContent = dc.reason || 'Ảnh chưa cho thấy đủ dấu hiệu tủ kính; hãy kiểm tra thực tế.';
                 caseCheck.checked = false;
             }
         }
 
+        function fillOwnerNarrationFields(a) {
+            for(const [id,key] of [['aiWhatInput','what'],['aiUseInput','use'],['aiPeriodInput','period'],['aiStoryInput','story']]) document.getElementById(id).value=a[key]||'';
+        }
         function closeAiConfirmModal() {
             document.getElementById('aiConfirmModal').classList.add('hidden');
             pendingAiArtifactDraft = null;
         }
 
         function confirmAndSaveAiArtifact() {
-            if (!pendingAiArtifactDraft) return;
+            if (!pendingAiArtifactDraft || currentAppMode!=='owner' || !isAdminUnlocked) return;
             const finalName = document.getElementById('aiConfirmNameInput').value.trim();
             if (!finalName) {
                 showToast('Vui lòng nhập tên hiện vật trước khi lưu.');
                 return;
             }
 
+            const narration={what:document.getElementById('aiWhatInput').value.trim(),use:document.getElementById('aiUseInput').value.trim(),period:document.getElementById('aiPeriodInput').value.trim(),story:document.getElementById('aiStoryInput').value.trim()};
+            if(!narration.what||!narration.use||!narration.period){showToast('Hãy nhập mô tả, công dụng và niên đại (hoặc Chưa xác định).');return;}
             const ai = pendingAiArtifactDraft.aiData || {};
             const hasDisplayCase = document.getElementById('aiHasDisplayCaseCheck').checked;
-            const newId = 'art-' + Date.now();
+            const existing=artifacts.find(a=>a.id===pendingAiArtifactDraft.knownId);
+            if(existing) {
+                Object.assign(existing,{name:finalName,...narration,registeredForScan:true});
+                if(hasDisplayCase && !existing.displayCaseId) existing.displayCaseId=upsertDisplayCaseForArtifact(existing.id,existing.x,existing.z,existing.floor,ai.displayCase||{});
+                if(!hasDisplayCase && existing.displayCaseId){const dc=displayCases.find(d=>d.id===existing.displayCaseId);if(dc)dc.artifactIds=(dc.artifactIds||[]).filter(id=>id!==existing.id);existing.displayCaseId=null;}
+                saveArtifactsLocal(); saveScannedMapLocal(); closeAiConfirmModal(); refreshAllUI(); showToast('Đã cập nhật hiện vật đã lưu, không tạo bản trùng.'); return;
+            }
+            const newId = 'art-' + Date.now() + '-' + Math.random().toString(36).slice(2,7);
             let linkedCaseId = null;
 
             if (hasDisplayCase) {
@@ -2923,9 +3078,8 @@
                 x: pendingAiArtifactDraft.x,
                 y: 0.6,
                 z: pendingAiArtifactDraft.z,
-                what: ai.shortDescription || `Hiện vật "${finalName}" được lưu từ camera.`,
-                use: 'Hiện vật trưng bày phục vụ tham quan và nghiên cứu tại Bảo tàng Đà Nẵng.',
-                story: 'Được số hóa trực tiếp kèm ảnh gốc và vị trí trên bản đồ 3D.',
+                ...narration,
+                registeredForScan:true,
                 imageDataUrl: pendingAiArtifactDraft.imageDataUrl,
                 displayCaseId: linkedCaseId
             };
@@ -3130,61 +3284,80 @@
             userAvatarMesh = group;
 
             if (scene) scene.add(userAvatarMesh);
-            updateUserAvatar3D();
+            updateUserAvatar3D(true);
         }
 
-        function getStairClimbY(x, z, floor) {
-            const stair = displayCases.find(c => c.isStair);
-            if (!stair) return (floor - 1) * 3.5;
-
-            const angle = -(stair.angle || 0);
-            const dx = x - stair.position.x;
-            const dz = z - stair.position.z;
-            // Đưa tọa độ vào hệ quy chiếu cục bộ của cầu thang
-            const localX = dx * Math.cos(angle) - dz * Math.sin(angle);
-            const localZ = dx * Math.sin(angle) + dz * Math.cos(angle);
-
-            const halfW = (stair.width || 1.2) / 2 + 0.35;
-            const halfD = (stair.depth || 2.2) / 2 + 0.35;
-            if (Math.abs(localX) <= halfW && Math.abs(localZ) <= halfD) {
-                const stairH = stair.height || 3.5;
-                const depth = stair.depth || 2.2;
-                // localZ từ -depth/2 (chân thang) đến +depth/2 (đỉnh thang)
-                const rawRatio = (localZ + depth / 2) / depth;
-                const ratio = Math.max(0, Math.min(1, rawRatio));
-
-                if (floor === 1 && ratio >= 0.85) {
-                    userPos.floor = 2;
-                    const dpadFloorBtn = document.getElementById('dpadFloorBtn');
-                    if (dpadFloorBtn) dpadFloorBtn.textContent = 'T2';
-                    showToast('🪜 Bạn đã bước lên Tầng 2!');
-                    return 3.5;
-                }
-                if (floor === 2 && ratio <= 0.15) {
-                    userPos.floor = 1;
-                    const dpadFloorBtn = document.getElementById('dpadFloorBtn');
-                    if (dpadFloorBtn) dpadFloorBtn.textContent = 'T1';
-                    showToast('🪜 Bạn đã bước xuống Tầng 1!');
-                    return 0;
-                }
-                return ratio * stairH;
-            }
-            return (userPos.floor - 1) * 3.5;
+        // Cùng một hệ tọa độ với mesh cầu thang (rotation.y = -angle).
+        function activeWalker() { return currentAppMode === 'owner' ? ownerPos : userPos; }
+        function stairLocal(stair, x, z) {
+            const a=Number(stair.angle)||0, c=Math.cos(a), sn=Math.sin(a);
+            const dx=x-stair.position.x, dz=z-stair.position.z;
+            return {x:dx*c+dz*sn,z:-dx*sn+dz*c};
         }
-
-        function updateUserAvatar3D() {
-            if (!userAvatarMesh) return;
-            const targetX = userPos.x;
-            const targetZ = userPos.z;
-            const targetY = getStairClimbY(targetX, targetZ, userPos.floor);
-            const dx = targetX - userAvatarMesh.position.x;
-            const dz = targetZ - userAvatarMesh.position.z;
-            if (Math.hypot(dx, dz) > 0.01) {
-                userAvatarMesh.rotation.y = Math.atan2(dx, dz);
+        function walkableStairs() {
+            return useScannedMapMode ? displayCases.filter(c=>c.isStair && Number(c.floor)===1 && scannedWalls.some(w=>Number(w.floor)===2)) : [];
+        }
+        function getStairClimbY(x,z,floor,p=activeWalker()) {
+            const stair=walkableStairs().find(c=>c.id===p.stairId);
+            if (!stair) return (floor-1)*3.5;
+            const d=Math.max(.3,Number(stair.depth)||2.2);
+            const ratio=Math.max(0,Math.min(1,(stairLocal(stair,x,z).z+d/2)/d));
+            // Cao độ theo từng bậc, khớp với hình học 14 bậc; renderer làm mượt bước đi.
+            return Math.ceil(ratio*14)*3.5/14;
+        }
+        function syncWalkerUI(p) {
+            setXRText('dpadFloorBtn',p.stairId?'↕':'T'+p.floor);
+            if(p===ownerPos) { setXRText('ownerFloorVal',p.floor);setXRText('ownerHeadingVal',Math.round(p.heading||0)+'°'); }
+        }
+        function walkSubstep(p,nx,nz) {
+            const stairs=walkableStairs();
+            let stair=stairs.find(c=>c.id===p.stairId);
+            if(!stair)p.stairId=null;
+            let nextFloor=p.floor, nextStair=p.stairId;
+            if(stair){
+                const q=stairLocal(stair,nx,nz), d=(Number(stair.depth)||2.2)/2, w=(Number(stair.width)||1.2)/2;
+                if(Math.abs(q.x)>Math.max(.1,w-.16)) return false;
+                if(q.z>=d){ nextFloor=2;nextStair=null; }
+                else if(q.z<=-d){nextFloor=1;nextStair=null;}
+            } else {
+                for(const c of stairs){
+                    const q=stairLocal(c,nx,nz), old=stairLocal(c,p.x,p.z), d=(Number(c.depth)||2.2)/2,w=(Number(c.width)||1.2)/2;
+                    if(Math.abs(q.x)>w || q.z<=-d || q.z>=d)continue;
+                    // Chỉ vào từ chân (T1) hoặc đỉnh (T2), không leo ngang hay nhảy từ tầng trên xuống giữa thang.
+                    if(Math.abs(q.x)>Math.max(.1,w-.16))return false;
+                    if((p.floor===1&&old.z<=-d+1e-7)||(p.floor===2&&old.z>=d-1e-7)){nextStair=c.id;break;}
+                    return false;
+                }
             }
-            userAvatarMesh.position.set(targetX, targetY, targetZ);
-            updateNavigationLine();
-            checkProximityArtifact();
+            if(isBlockedByObstacle(p.x,p.z,nx,nz,p.floor)|| (nextFloor!==p.floor&&isBlockedByObstacle(p.x,p.z,nx,nz,nextFloor)))return false;
+            const oldFloor=p.floor;
+            p.x=nx;p.z=nz;p.floor=nextFloor;p.stairId=nextStair;
+            if(nextFloor!==oldFloor){
+                showToast(nextFloor===2?'🪜 Đã đi hết cầu thang lên Tầng 2!':'🪜 Đã đi hết cầu thang xuống Tầng 1!');
+                if(p===ownerPos && !xrSession){const sel=document.getElementById('editLayoutFloorSelect');if(sel)sel.value=String(nextFloor);}
+            }
+            return true;
+        }
+        function moveWalker(p,nx,nz) {
+            if(!Number.isFinite(nx)||!Number.isFinite(nz))return false;
+            const dx=nx-p.x,dz=nz-p.z,len=Math.hypot(dx,dz);
+            if(len<1e-8)return false;
+            const count=Math.ceil(len/.09);if(count>1000)return false;
+            let moved=false;
+            for(let i=0;i<count;i++){if(!walkSubstep(p,p.x+dx/count,p.z+dz/count))break;moved=true;}
+            if(moved){p.heading=(Math.atan2(dx,-dz)*180/Math.PI+360)%360;syncWalkerUI(p);updateUserAvatar3D();if(p===ownerPos)renderVectorMiniMap();}
+            return moved;
+        }
+        let avatarTarget=null;
+        function updateUserAvatar3D(snap=false) {
+            const p=activeWalker();syncWalkerUI(p);
+            if(!userAvatarMesh)return;
+            const targetY=getStairClimbY(p.x,p.z,p.floor,p);
+            const dx=p.x-userAvatarMesh.position.x,dz=p.z-userAvatarMesh.position.z;
+            if(Math.hypot(dx,dz)>.01&&!snap)userAvatarMesh.rotation.y=Math.atan2(dx,dz);
+            avatarTarget={x:p.x,y:targetY,z:p.z};
+            if(snap||xrSession)userAvatarMesh.position.set(p.x,targetY,p.z);
+            if(currentAppMode==='visitor'){updateNavigationLine();checkProximityArtifact();}
         }
 
         function updateUserAvatarAnimation(delta) {
@@ -3230,9 +3403,14 @@
             sampleModelGroup.add(f2);
         }
 
+        function disposeMapGroup(group) {
+            const geometries=new Set(),materials=new Set(),textures=new Set();
+            group.traverse(obj=>{if(obj.geometry)geometries.add(obj.geometry);for(const m of (Array.isArray(obj.material)?obj.material:[obj.material])) if(m){materials.add(m);if(m.map)textures.add(m.map);}});
+            group.clear(); geometries.forEach(g=>g.dispose()); materials.forEach(m=>m.dispose()); textures.forEach(t=>t.dispose());
+        }
         function rebuildScannedMap3D() {
             if (!scannedMapGroup) return;
-            scannedMapGroup.clear();
+            disposeMapGroup(scannedMapGroup);
 
             scannedMapGroup.add(new THREE.GridHelper(24, 24, 0x94a3b8, 0xe2e8f0));
 
@@ -3255,14 +3433,23 @@
                 const slabCz = (minZ + maxZ) / 2;
                 const yBase = (fl - 1) * 3.5;
 
-                const slab = new THREE.Mesh(
-                    new THREE.BoxGeometry(slabW, 0.16, slabD),
-                    new THREE.MeshStandardMaterial({
-                        color: fl >= 2 ? 0xf8fafc : 0xf1f5f9,
-                        roughness: 0.75
-                    })
-                );
-                slab.position.set(slabCx, yBase - 0.08, slabCz);
+                const shape=new THREE.Shape();
+                const x0=slabCx-slabW/2,x1=slabCx+slabW/2,z0=slabCz-slabD/2,z1=slabCz+slabD/2;
+                shape.moveTo(x0,-z0);shape.lineTo(x1,-z0);shape.lineTo(x1,-z1);shape.lineTo(x0,-z1);shape.closePath();
+                if(fl===2){
+                    const holes=[];
+                    for(const stair of walkableStairs()){
+                        const a=Number(stair.angle)||0,c=Math.cos(a),sn=Math.sin(a),w=(Number(stair.width)||1.2)/2+.06,d=(Number(stair.depth)||2.2)/2;
+                        const pts=[[-w,-d],[-w,d],[w,d],[w,-d]].map(([x,z])=>({x:stair.position.x+x*c-z*sn,z:stair.position.z+x*sn+z*c}));
+                        // Không tạo lỗ ngoài biên hoặc các lỗ chồng nhau (tránh triangulation lỗi).
+                        if(!pts.every(q=>q.x>x0+.01&&q.x<x1-.01&&q.z>z0+.01&&q.z<z1-.01))continue;
+                        const b={minX:Math.min(...pts.map(q=>q.x)),maxX:Math.max(...pts.map(q=>q.x)),minZ:Math.min(...pts.map(q=>q.z)),maxZ:Math.max(...pts.map(q=>q.z))};
+                        if(holes.some(h=>h.minX<b.maxX&&h.maxX>b.minX&&h.minZ<b.maxZ&&h.maxZ>b.minZ))continue;
+                        holes.push(b);const hole=new THREE.Path();hole.moveTo(pts[0].x,-pts[0].z);pts.slice(1).forEach(q=>hole.lineTo(q.x,-q.z));hole.closePath();shape.holes.push(hole);
+                    }
+                }
+                const slab=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{depth:.16,bevelEnabled:false}),new THREE.MeshStandardMaterial({color:fl>=2?0xf8fafc:0xf1f5f9,roughness:.75}));
+                slab.rotation.x=-Math.PI/2;slab.position.y=yBase-.16;
                 scannedMapGroup.add(slab);
             });
 
@@ -3299,7 +3486,7 @@
                 if (dc.isStair) {
                     const stairW = dc.width || 1.2;
                     const stairL = dc.depth || 2.6;
-                    const stairH = dc.height || 3.5;
+                    const stairH = 3.5;
                     const stepCount = 14;
                     const riserH = stairH / stepCount;
                     const treadD = stairL / stepCount;
@@ -3399,7 +3586,7 @@
 
         function rebuildMapPins() {
             if (!pinsGroup) return;
-            pinsGroup.clear();
+            disposeMapGroup(pinsGroup);
 
             const pedMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
             const trimMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.3 });
@@ -3560,6 +3747,7 @@
             const now = performance.now();
             const delta = Math.min(0.1, (now - lastAnimTime) / 1000);
             lastAnimTime = now;
+            if(userAvatarMesh&&avatarTarget){const k=1-Math.exp(-delta*18);userAvatarMesh.position.x+=(avatarTarget.x-userAvatarMesh.position.x)*k;userAvatarMesh.position.y+=(avatarTarget.y-userAvatarMesh.position.y)*k;userAvatarMesh.position.z+=(avatarTarget.z-userAvatarMesh.position.z)*k;}
             updateUserAvatarAnimation(delta);
             const activeAvatar = (typeof userAvatarMesh !== 'undefined' && userAvatarMesh) ? userAvatarMesh : null;
 
@@ -3583,20 +3771,6 @@
                     activeAvatar.position.z + Math.cos(fpYaw) * cosPitch * lookDist
                 );
 
-                // Tự động chuyển tầng khi bước vào vùng cầu thang
-                const stair = displayCases.find(c => c.isStair);
-                if (stair && Math.hypot(activeAvatar.position.x - stair.position.x, activeAvatar.position.z - stair.position.z) < 1.35) {
-                    if (!window._stairCooldown) {
-                        window._stairCooldown = true;
-                        const nextFloor = activeFloor === 1 ? 2 : 1;
-                        userPos.floor = nextFloor;
-                        const dpadFloorBtn = document.getElementById('dpadFloorBtn');
-                        if (dpadFloorBtn) dpadFloorBtn.textContent = 'T' + nextFloor;
-                        updateUserAvatar3D();
-                        showToast(nextFloor === 2 ? '🪜 Đang bước lên Tầng 2...' : '🪜 Đang bước xuống Tầng 1...');
-                        setTimeout(() => { window._stairCooldown = false; }, 3000);
-                    }
-                }
             } else {
                 fpYaw = null;
                 fpPitch = 0;
@@ -3642,7 +3816,8 @@
                 if (dc.floor !== floor) continue;
                 const halfW = (dc.width || 1.0) / 2 + 0.25;
                 const halfD = (dc.depth || 0.8) / 2 + 0.25;
-                if (Math.abs(newX - dc.position.x) < halfW && Math.abs(newZ - dc.position.z) < halfD) {
+                const dx=newX-dc.position.x,dz=newZ-dc.position.z,c=Math.cos(dc.angle||0),sn=Math.sin(dc.angle||0);
+                if (Math.abs(dx*c+dz*sn)<halfW && Math.abs(-dx*sn+dz*c)<halfD) {
                     return true;
                 }
             }
@@ -3700,10 +3875,7 @@
             };
 
             pad.addEventListener('pointerdown', (e) => {
-                if (e.target && e.target.id === 'dpadFloorBtn') {
-                    toggleUserFloor();
-                    return;
-                }
+                if(currentAppMode==='owner'&&xrSession){showToast('Dừng phiên AR để điều khiển nhân vật ảo.');return;}
                 _joyActive = true;
                 pad.setPointerCapture(e.pointerId);
                 updateFromPointer(e.clientX, e.clientY);
@@ -3724,10 +3896,14 @@
 
             pad.addEventListener('pointerup', resetKnob);
             pad.addEventListener('pointercancel', resetKnob);
+            pad.addEventListener('lostpointercapture', resetKnob);
+            window.addEventListener('blur', resetKnob);
         }
 
         function moveUserStep(dx, dz) {
-            const step = 0.45;
+            if(currentAppMode==='owner'&&(xrSession||isRecordingWalk))return;
+            const p=activeWalker();
+            const step = 0.20;
             let moveX = dx * step;
             let moveZ = dz * step;
 
@@ -3744,21 +3920,7 @@
                 moveZ = (fwdZ * forwardInput + rightZ * rightInput) * step;
             }
 
-            const nx = userPos.x + moveX;
-            const nz = userPos.z + moveZ;
-            if (isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
-                showToast('🚧 Đụng tường hoặc tủ kính rồi!');
-                return;
-            }
-            userPos.x = nx;
-            userPos.z = nz;
-            updateUserAvatar3D();
-        }
-
-        function toggleUserFloor() {
-            userPos.floor = userPos.floor === 1 ? 2 : 1;
-            document.getElementById('dpadFloorBtn').textContent = 'T' + userPos.floor;
-            updateUserAvatar3D();
+            if(!moveWalker(p,p.x+moveX,p.z+moveZ))showToast('🚧 Hãy đi đúng lối vào cầu thang hoặc tránh vật cản.');
         }
 
         function startNavigationTo(artifactId) {
@@ -3774,6 +3936,7 @@
             document.getElementById('navBanner').classList.add('hidden');
             if (navLineMesh && scene) {
                 scene.remove(navLineMesh);
+                navLineMesh.geometry.dispose(); navLineMesh.material.dispose();
                 navLineMesh = null;
             }
         }
@@ -3789,11 +3952,19 @@
             document.getElementById('navFloorBadge').textContent = 'Tầng ' + target.floor;
             document.getElementById('navTargetName').textContent = target.name;
             document.getElementById('navInstruction').textContent =
-                dist < 1.5
+                dist < 1.5 && target.floor === userPos.floor
                     ? `Bạn đã đến nơi: ${target.name}.`
-                    : `Đi thẳng ${dist.toFixed(1)} mét về phía ${target.name}.`;
+                    : `Khoảng cách đường chim bay ${dist.toFixed(1)} m tới ${target.name}.`;
 
-            if (navLineMesh) scene.remove(navLineMesh);
+            if (navLineMesh) { scene.remove(navLineMesh); navLineMesh.geometry.dispose(); navLineMesh.material.dispose(); navLineMesh=null; }
+            if (target.floor !== userPos.floor) {
+                document.getElementById('navInstruction').textContent='Hiện vật ở tầng '+target.floor+'. Hãy dùng cầu thang/lối chuyển tầng phù hợp; chưa có tuyến đường liên tầng xác nhận.';
+                return;
+            }
+            if(useScannedMapMode && scannedWalls.some(w=>w.floor===userPos.floor && segmentsIntersect(userPos.x,userPos.z,target.x||0,target.z||0,w.start.x,w.start.z,w.end.x,w.end.z))) {
+                document.getElementById('navInstruction').textContent='Có tường chắn hướng đi thẳng. Hãy đi theo lối mở trên bản đồ; chưa tính được tuyến vòng.';
+                return;
+            }
             const pts = [
                 new THREE.Vector3(userPos.x, (userPos.floor - 1) * 3.5 + 0.25, userPos.z),
                 new THREE.Vector3(target.x || 0, (target.floor - 1) * 3.5 + 0.25, target.z || 0)
@@ -3806,6 +3977,7 @@
         }
 
         function checkProximityArtifact() {
+            if(currentAppMode!=='visitor'||currentVisitorTab!=='map'||!document.getElementById('artifactDetailModal').classList.contains('hidden'))return;
             let nearest = null;
             let minDist = Infinity;
             for (const art of artifacts) {
@@ -3871,12 +4043,7 @@
                     const mLng = 111320 * Math.cos((gpsOrigin.lat * Math.PI) / 180);
                     const nx = gpsOrigin.baseX + (longitude - gpsOrigin.lng) * mLng;
                     const nz = gpsOrigin.baseZ - (latitude - gpsOrigin.lat) * mLat;
-                    if (typeof isBlockedByObstacle === 'function' && isBlockedByObstacle(userPos.x, userPos.z, nx, nz, userPos.floor)) {
-                        return;
-                    }
-                    userPos.x = nx;
-                    userPos.z = nz;
-                    updateUserAvatar3D();
+                    if(currentAppMode==='visitor'&& !userPos.stairId && Math.hypot(nx-userPos.x,nz-userPos.z)<3)moveWalker(userPos,nx,nz);
                 }, (err) => {
                     showToast('Lỗi GPS: ' + err.message);
                 }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
@@ -3909,11 +4076,12 @@
         }
 
         function toggleVoiceEngine() {
-            voiceEngine = voiceEngine === 'cloud' ? 'webspeech' : 'cloud';
-            document.getElementById('voiceEngineBtn').textContent = voiceEngine === 'cloud' ? '☁️ Giọng Cloud' : '📱 Giọng máy';
+            const voices=window.speechSynthesis?.getVoices()||[];
+            showToast(voices.some(v=>/^vi(?:-|$)/i.test(v.lang))?'Đang sử dụng giọng tổng hợp tiếng Việt trên thiết bị.':'Thiết bị chưa cung cấp giọng tiếng Việt; hãy kiểm tra cài đặt giọng đọc.');
         }
 
         function stopSpeaking() {
+            speechRun++;
             if (currentAudioEl) {
                 try { currentAudioEl.pause(); } catch (e) {}
                 currentAudioEl = null;
@@ -3925,35 +4093,30 @@
             document.getElementById('stopAudioBtn').classList.add('hidden');
         }
 
+        let speechRun=0;
         function speakVietnamese(text) {
             if (!text) return;
             stopSpeaking();
-            document.getElementById('subtitleText').textContent = text;
+            const run=++speechRun;
+            document.getElementById('subtitleText').textContent=text;
             document.getElementById('subtitleBar').classList.remove('hidden');
             document.getElementById('stopAudioBtn').classList.remove('hidden');
-
-            if (voiceEngine === 'cloud') {
-                const shortText = text.slice(0, 180);
-                const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(shortText)}`;
-                const audio = new Audio(url);
-                currentAudioEl = audio;
-                audio.onended = () => stopSpeaking();
-                audio.onerror = () => speakWithWebSpeech(text);
-                audio.play().catch(() => speakWithWebSpeech(text));
-            } else {
-                speakWithWebSpeech(text);
-            }
+            if(!('speechSynthesis' in window)){showToast('Trình duyệt không hỗ trợ giọng đọc. Bạn có thể đọc nội dung trên màn hình.');return;}
+            const parts=text.match(/[^.!?。！？]+[.!?。！？]*|[.!?。！？]+/g)||[text];
+            const chunks=[]; for(const part of parts){const words=part.trim().split(/\s+/);let chunk=''; for(const w of words){if(chunk.length+w.length>200&&chunk){chunks.push(chunk);chunk='';}chunk+=(chunk?' ':'')+w;}if(chunk)chunks.push(chunk);}
+            const voices=window.speechSynthesis.getVoices();
+            const vi=voices.find(v=>/^vi-VN$/i.test(v.lang))||voices.find(v=>/^vi(?:-|$)/i.test(v.lang));
+            const next=i=>{
+                if(run!==speechRun)return;
+                if(i>=chunks.length){stopSpeaking();return;}
+                try{const u=new SpeechSynthesisUtterance(chunks[i]);u.lang='vi-VN';if(vi)u.voice=vi;u.rate=0.95;
+                    u.onend=()=>next(i+1);u.onerror=()=>{if(run===speechRun){stopSpeaking();showToast('Không phát được giọng đọc. Bấm Nghe / Đọc lại hoặc bật tiếng.');}};
+                    window.speechSynthesis.speak(u);
+                }catch(e){stopSpeaking();showToast('Giọng đọc chưa khả dụng trên thiết bị.');}
+            };next(0);
         }
-
-        function speakWithWebSpeech(text) {
-            if (!('speechSynthesis' in window)) return;
-            try {
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.lang = 'vi-VN';
-                utter.onend = () => stopSpeaking();
-                window.speechSynthesis.speak(utter);
-            } catch (e) {}
-        }
+        function speakWithWebSpeech(text){speakVietnamese(text);}
+        function artifactNarration(a){return [a.name,a.what&&`Mô tả: ${a.what}`,a.use&&`Công dụng: ${a.use}`,`Niên đại: ${a.period||'Chưa có thông tin được xác nhận'}`,a.story&&`Thông tin lịch sử: ${a.story}`].filter(Boolean).join('. ');}
 
         /* =====================================================================
          * 13. MODAL CHI TIẾT HIỆN VẬT 3D XOAY 360° & QUẢN LÝ
@@ -4010,7 +4173,9 @@
             const art = artifacts.find(a => a.id === id);
             if (!art) return;
             currentDetailArtifact = art;
+            document.getElementById('detailMatchNote').classList.add('hidden');
             document.getElementById('detailTitle').textContent = art.name;
+            document.getElementById('detailPeriod').textContent=art.period||'Chưa có thông tin được xác nhận';
             document.getElementById('detailMeta').textContent = `Tầng ${art.floor} • ${art.category || 'Hiện vật'}`;
             document.getElementById('detailWhat').textContent = art.what || '';
             document.getElementById('detailUse').textContent = art.use || '';
@@ -4034,6 +4199,7 @@
         }
 
         function closeArtifactDetail() {
+            stopSpeaking();
             document.getElementById('artifactDetailModal').classList.add('hidden');
             if (detailAnimId) cancelAnimationFrame(detailAnimId);
         }
@@ -4047,7 +4213,7 @@
         function narrateCurrentDetail() {
             if (!currentDetailArtifact) return;
             const a = currentDetailArtifact;
-            speakVietnamese(`${a.name}. ${a.what} ${a.use} ${a.story}`);
+            speakVietnamese(artifactNarration(a));
         }
 
         function navigateToCurrentDetail() {
@@ -4056,44 +4222,49 @@
             startNavigationTo(currentDetailArtifact.id);
         }
 
-        function submitManualArtifact(e) {
-            e.preventDefault();
-            const newArt = {
-                id: 'art-' + Date.now(),
-                name: document.getElementById('artNameInput').value.trim(),
-                category: document.getElementById('artCategoryInput').value.trim() || 'Hiện vật',
-                icon: '🏺',
-                floor: Number(document.getElementById('artFloorInput').value) || 1,
-                x: Number(document.getElementById('artXInput').value) || 0,
-                y: 0.6,
-                z: Number(document.getElementById('artZInput').value) || 0,
-                what: document.getElementById('artWhatInput').value.trim() || 'Hiện vật trưng bày tại bảo tàng.',
-                use: document.getElementById('artUseInput').value.trim() || 'Phục vụ tham quan lịch sử.',
-                story: document.getElementById('artStoryInput').value.trim() || 'Được bổ sung bởi ban quản lý.',
-                imageDataUrl: null,
-                displayCaseId: null
-            };
-            artifacts.unshift(newArt);
-            saveArtifactsLocal();
-            e.target.reset();
-            refreshAllUI();
-            showToast('Đã lưu hiện vật mới lên Bản đồ 3D.');
+        let manualEditingId=null, manualSaving=false;
+        function resetManualArtifactEditor(){manualEditingId=null;document.getElementById('manualArtifactForm').reset();document.getElementById('manualEditStatus').textContent='Thêm hiện vật mới';}
+        function editRegisteredArtifact(id){
+            if(currentAppMode!=='owner'||!isAdminUnlocked)return;
+            const a=artifacts.find(x=>x.id===id);if(!a)return;
+            switchOwnerSubTab('add');resetManualArtifactEditor();manualEditingId=id;
+            for(const [key,field] of [['name','Name'],['category','Category'],['floor','Floor'],['x','X'],['z','Z'],['what','What'],['use','Use'],['period','Period'],['story','Story']])document.getElementById('art'+field+'Input').value=a[key]??'';
+            document.getElementById('manualEditStatus').textContent='Đang chỉnh sửa: '+a.name+(a.imageDataUrl?' • Giữ ảnh mẫu cũ nếu không chọn ảnh mới':' • Chưa có ảnh mẫu');
+        }
+        async function submitManualArtifact(e) {
+            e.preventDefault();if(currentAppMode!=='owner'||!isAdminUnlocked||manualSaving)return;
+            const value=id=>document.getElementById(id).value.trim();
+            const name=value('artNameInput'),what=value('artWhatInput'),use=value('artUseInput'),period=value('artPeriodInput');
+            if(!name||!what||!use||!period){showToast('Hãy nhập tên, mô tả, công dụng và niên đại.');return;}
+            const prior=artifacts.find(a=>a.id===manualEditingId);
+            const formData={name,what,use,period,category:value('artCategoryInput')||'Hiện vật',story:value('artStoryInput'),floor:Number(value('artFloorInput'))||1,x:Number(value('artXInput'))||0,z:Number(value('artZInput'))||0};
+            const file=document.getElementById('artPhotoInput').files?.[0];
+            manualSaving=true;
+            try{
+                const image=file?await compressUploadedImage(file):prior?.imageDataUrl||null;
+                if(currentAppMode!=='owner'||!isAdminUnlocked)return;
+                const next={...(prior||{id:'art-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),icon:'🏺',y:0.6,displayCaseId:null}),...formData,imageDataUrl:image,registeredForScan:!!image};
+                if(prior)Object.assign(prior,next);else artifacts.unshift(next);
+                saveArtifactsLocal();resetManualArtifactEditor();refreshAllUI();showToast(image?'Đã lưu hiện vật và ảnh mẫu cho khách quét.':'Đã lưu hiện vật; chưa có ảnh mẫu để khách quét.');
+            }catch(err){showToast('Không thể lưu ảnh mẫu.');}finally{manualSaving=false;}
         }
 
         function deleteArtifactById(id) {
+            if(currentAppMode!=='owner'||!isAdminUnlocked)return;
             artifacts = artifacts.filter(a => a.id !== id);
             saveArtifactsLocal();
             refreshAllUI();
             showToast('Đã xóa hiện vật.');
         }
 
-        function exportAllDataJSON() {
+        function exportAllDataJSON(publish=false) {
+            if(publish && (currentAppMode!=='owner'||!isAdminUnlocked))return;
             const payload = { version: 2, exportedAt: new Date().toISOString(), artifacts, scannedWalls, scannedPaths, displayCases };
             const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'bao_tang_da_nang_3d_data.json';
+            a.download = publish?'museum-catalog.json':'bao_tang_da_nang_3d_data.json';
             a.click();
             URL.revokeObjectURL(url);
             showToast('Đã xuất file JSON sao lưu.');
@@ -4173,7 +4344,11 @@
         }
 
         function switchAppMode(mode) {
+            if(mode==='owner'&&!isAdminUnlocked)return;
+            closeVisitorMatch();closeAiConfirmModal();if(pendingConsentResolve)resolveAiConsent(false);aiConsentGrantedSession=false;stopSpeaking();
+            stopHoldMove();
             currentAppMode = mode;
+            updateUserAvatar3D(true);
             const vCont = document.getElementById('visitorContainer');
             const oCont = document.getElementById('ownerContainer');
             const bNav = document.getElementById('visitorBottomNav');
@@ -4202,6 +4377,7 @@
         }
 
         function switchVisitorTab(tab) {
+            if(tab!=='scan')closeVisitorMatch();
             currentVisitorTab = tab;
             ['map', 'scan', 'artifacts'].forEach(t => {
                 const sec = document.getElementById('tab-' + t);
@@ -4224,6 +4400,8 @@
                 previewBox.innerHTML = '';
                 previewBox.appendChild(mapCanvas);
             }
+            const pad=document.getElementById('indoorDpad');if(pad)previewBox.appendChild(pad);
+            updateUserAvatar3D(true);
             useScannedMapMode = true;
             applyMapSourceVisibility();
             rebuildScannedMap3D();
@@ -4238,6 +4416,8 @@
             if (mapCanvas.parentElement !== mapWrapper) {
                 mapWrapper.insertBefore(mapCanvas, mapWrapper.firstChild);
             }
+            const pad=document.getElementById('indoorDpad');if(pad)mapWrapper.appendChild(pad);
+            updateUserAvatar3D(true);
             rebuildScannedMap3D();
             rebuildMapPins();
             resizeMap3D();
@@ -4279,14 +4459,15 @@
         /* =====================================================================
          * 15. RENDER DANH SÁCH GIAO DIỆN
          * ===================================================================== */
+        function museumEscape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
         function renderQuickStrip() {
             const strip = document.getElementById('quickArtifactStrip');
             if (!strip) return;
             strip.innerHTML = artifacts.map(art => `
                 <button type="button" onclick="startNavigationTo('${art.id}')" class="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-50 border border-slate-200 hover:border-navy active:scale-95 transition text-left">
-                    <span class="text-base">${art.icon || '🏺'}</span>
+                    <span class="text-base">${museumEscape(art.icon || '🏺')}</span>
                     <div class="max-w-[125px]">
-                        <p class="text-[11px] font-extrabold text-navy truncate">${art.name}</p>
+                        <p class="text-[11px] font-extrabold text-navy truncate">${museumEscape(art.name)}</p>
                         <p class="text-[9px] text-slate-500">Tầng ${art.floor} • Chỉ đường</p>
                     </div>
                 </button>
@@ -4302,11 +4483,11 @@
                 <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center justify-between gap-2.5">
                     <div class="flex items-center gap-2.5 min-w-0">
                         <div class="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center text-xl shrink-0 overflow-hidden">
-                            ${art.imageDataUrl ? `<img src="${art.imageDataUrl}" class="w-full h-full object-cover">` : (art.icon || '🏺')}
+                            ${art.imageDataUrl ? `<img src="${museumEscape(art.imageDataUrl)}" class="w-full h-full object-cover">` : (art.icon || '🏺')}
                         </div>
                         <div class="min-w-0">
-                            <p class="text-xs font-extrabold text-navy truncate">${art.name}</p>
-                            <p class="text-[10px] text-slate-500">Tầng ${art.floor} • ${art.category || 'Hiện vật'}</p>
+                            <p class="text-xs font-extrabold text-navy truncate">${museumEscape(art.name)}</p>
+                            <p class="text-[10px] text-slate-500">Tầng ${art.floor} • ${museumEscape(art.category || 'Hiện vật')}</p>
                         </div>
                     </div>
                     <div class="flex gap-1.5 shrink-0">
@@ -4332,12 +4513,15 @@
                 `).join('');
 
             const artBox = document.getElementById('ownerArtifactsList');
-            artBox.innerHTML = artifacts.map(a => `
-                <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] flex justify-between items-center gap-2">
-                    <span class="font-bold text-navy truncate">${a.name} (T${a.floor})</span>
-                    <button type="button" onclick="deleteArtifactById('${a.id}')" class="px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px]">Xóa</button>
-                </div>
-            `).join('');
+            artBox.replaceChildren();
+            for(const a of artifacts){
+                const row=document.createElement('div');row.className='p-2 rounded-xl bg-slate-50 border border-slate-200 text-[11px] flex justify-between items-center gap-2';
+                const label=document.createElement('span');label.className='font-bold text-navy';label.textContent=a.name+' (T'+a.floor+') '+(a.registeredForScan?'• Đã đăng ký quét':'• Chưa đăng ký quét');
+                const edit=document.createElement('button');edit.type='button';edit.className='px-2 py-1 rounded-lg bg-blue-50 text-navy font-bold text-[10px]';edit.textContent='Sửa';edit.onclick=()=>editRegisteredArtifact(a.id);
+                const del=document.createElement('button');del.type='button';del.className='px-2 py-1 rounded-lg bg-red-50 text-red-600 font-bold text-[10px]';del.textContent='Xóa';del.onclick=()=>deleteArtifactById(a.id);
+                row.append(label,edit,del);artBox.append(row);
+            }
+
         }
 
         function refreshAllUI() {
@@ -4549,15 +4733,31 @@
         /* =====================================================================
          * 16. KHỞI TẠO ỨNG DỤNG
          * ===================================================================== */
+        async function loadPublishedMuseumCatalog(){
+            try{
+                if(localStorage.getItem(STORAGE_KEYS.ARTIFACTS))return;
+                const res=await fetch('./museum-catalog.json',{cache:'no-cache',signal:AbortSignal.timeout(5000)});
+                if(!res.ok)return;const data=await res.json();
+                if(!Array.isArray(data.artifacts)||localStorage.getItem(STORAGE_KEYS.ARTIFACTS)||currentAppMode!=='visitor')return;
+                artifacts=data.artifacts.filter(a=>a&&typeof a.name==='string'&&typeof a.id==='string'&&/^[a-zA-Z0-9_-]+$/.test(a.id));
+                if(Array.isArray(data.scannedWalls))scannedWalls=data.scannedWalls.map(normalizeWallRecord).filter(Boolean);
+                if(Array.isArray(data.scannedPaths))scannedPaths=data.scannedPaths;
+                if(Array.isArray(data.displayCases))displayCases=data.displayCases;
+                if(scannedWalls.length)useScannedMapMode=true;
+                refreshAllUI();
+            }catch(e){}
+        }
         window.onload = function () {
             loadAllLocalData();
+            window.addEventListener("resize",renderVectorMiniMap);
             initMap3D();
             refreshAllUI();
             updateAvatarGenderButtonUI();
+            loadPublishedMuseumCatalog();
 
             window.addEventListener('devicemotion', handleDeviceMotion);
             window.addEventListener('deviceorientation', (e) => {
-                if (typeof e.alpha === 'number') {
+                if (!xrSession && typeof e.alpha === 'number') {
                     const heading = (360 - e.alpha) % 360;
                     ownerPos.heading = heading;
                     const el = document.getElementById('ownerHeadingVal');
